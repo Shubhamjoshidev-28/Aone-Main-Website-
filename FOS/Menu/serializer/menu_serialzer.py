@@ -9,14 +9,14 @@ class MenuSerializer(
     serializers.ModelSerializer
 ):
     class Meta:
-        model = Menu,
+        model = Menu
         fields = [
             'id',
             'Item_Name',
             'Item_Category',
             'Item_Size',
             'Item_Price',
-            'is_available'
+            'is_available',
             'created_at'
         ]
 

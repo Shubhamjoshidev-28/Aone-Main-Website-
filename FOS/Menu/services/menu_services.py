@@ -13,11 +13,11 @@ class MenuService:
         validated_data
     ):
         menu = Menu.objects.create(
-            Item_Name=validated_data("Item_Name"),
-            Item_Category=validated_data("Item_Category"),
-            Item_Size=validated_data("Item_Size"),
-            Item_Price=validated_data("Item_Price"),
-            is_available=validated_data("is_available")
+            Item_Name=validated_data["Item_Name"],
+            Item_Category=validated_data["Item_Category"],
+            Item_Size=validated_data["Item_Size"],
+            Item_Price=validated_data["Item_Price"],
+            is_available=validated_data["is_available"]
         )
         return menu
 
@@ -45,9 +45,11 @@ class MenuService:
             )
             updated_fields.append(field)
 
+        
         menu.save(
             update_fields=updated_fields
         )
+        
         return menu
 
     @staticmethod

@@ -4,6 +4,9 @@ from rest_framework.views import (
 from Menu.services.menu_services import (
     MenuService
 )
+from Menu.models.menu import (
+    Menu
+)
 from Menu.serializer.menu_serialzer import (
     MenuSerializer
 )
@@ -46,7 +49,8 @@ class EditMenuView(
     
     def patch(
         self,
-        request
+        request,
+        item_id
     ):
         serializer=MenuSerializer(
             data=request.data,
@@ -56,9 +60,10 @@ class EditMenuView(
             raise_exception=True
         )
         Menu = MenuService.edit_menu(
-            item_id=serializer.validated_data.get(id),
+            item_id=item_id,
             validated_data=serializer.validated_data
         )
+        print(serializer.validated_data)
         return Response (
             {
                 "success":True,
@@ -78,11 +83,17 @@ class GetMenuView(
     ):
         menu=MenuService.get_menu()
 
+        serializer = MenuSerializer(
+                menu,
+                many=True
+        )
+
+
         return Response (
             {
                 "success":True,
                 "message":"Menu Fetched Successfully",
-                "menu":menu
+                "menu":serializer.data
             },
             status=status.HTTP_200_OK
         )
