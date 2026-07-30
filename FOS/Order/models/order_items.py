@@ -22,23 +22,26 @@ class Order_Items(
     id = models.BigAutoField(
         primary_key=True
     )
-    order_id = models.ForeignKey(
+    order = models.ForeignKey(
         Order,
         on_delete=models.CASCADE,
-        related_name='Order_Items'
+        related_name='order_items'
     )
-    item_id = models.ForeignKey(
+    item = models.ForeignKey(
         Menu,
-        on_delete=models.SET_NULL,
-        related_name='Order_Items',
+        on_delete=models.CASCADE,
+        related_name='order_items',
         null=True,
         blank=True
     )
-    unit_price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        validators=[MinValueValidator(Decimal("0.01"))]
+    unit_price = models.ForeignKey(
+        Menu,
+        on_delete=models.SET_NULL,
+        related_name='order_items',
+        null=True,
+        blank=True
     )
+        
     order_qty = models.PositiveIntegerField(
         validators=[MinValueValidator(1)]
     )
