@@ -52,6 +52,11 @@ class Order (
         null = True,
         blank = True
     )
+    Phone = models.CharField(
+        max_length=15,
+        null=True,
+        blank=True
+    )
     Staff_Assigned = models.ForeignKey(
         Details,
         on_delete=models.SET_NULL,
@@ -85,6 +90,9 @@ class Order (
         max_length=20,
         null=True,
         blank=True
+    )
+    Bill_Printed = models.BooleanField(
+        default=False
     )
     created_at = models.DateTimeField(
         auto_now_add=True

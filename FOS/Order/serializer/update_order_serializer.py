@@ -22,5 +22,6 @@ class UpdateOrderSerializer(serializers.ModelSerializer):
             "Payment_Status",
             "Status",
             "Payment_Type",
-            "items"
+            "items",
+            "Bill_Printed"
         ]
