@@ -1,0 +1,787 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ restaurant.name|default:"Restaurant" }} — Weekly Business Report</title>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Bootstrap 5 CDN -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- FontAwesome CDN -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+<style>
+  :root {
+    --color-primary: #d32f2f;
+    --color-primary-dark: #a02323;
+    --color-primary-light: #ff6659;
+    --color-secondary: #ffffff;
+    --color-bg: #f8f8f8;
+    --color-card: #ffffff;
+    --color-border: #e6e6e6;
+    --color-text-main: #23201f;
+    --color-text-muted: #7a7472;
+    --color-success: #2e7d32;
+    --font-display: 'Poppins', 'Inter', sans-serif;
+    --font-body: 'Inter', 'Poppins', sans-serif;
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    --shadow-card: 0 2px 10px rgba(28, 20, 19, 0.06), 0 1px 2px rgba(28, 20, 19, 0.04);
+    --shadow-card-hover: 0 14px 30px rgba(211, 47, 47, 0.14), 0 4px 10px rgba(28, 20, 19, 0.06);
+    --chart-1: #d32f2f;
+    --chart-2: #ff8a65;
+    --chart-3: #ffb300;
+    --chart-4: #66bb6a;
+    --chart-5: #42a5f5;
+    --chart-6: #ab47bc;
+    --chart-7: #26c6da;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--color-bg);
+    font-family: var(--font-body);
+    color: var(--color-text-main);
+    margin: 0;
+    padding: 32px 0 60px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .report-shell {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+  }
+
+  /* ===================== HEADER ===================== */
+  .report-header {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    border-radius: var(--radius-lg);
+    padding: 28px 32px;
+    color: var(--color-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
+    box-shadow: var(--shadow-card);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .report-header::after {
+    content: "";
+    position: absolute;
+    right: -60px;
+    top: -60px;
+    width: 220px;
+    height: 220px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+  }
+
+  .header-identity {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    z-index: 1;
+  }
+
+  .restaurant-logo {
+    width: 58px;
+    height: 58px;
+    border-radius: var(--radius-md);
+    background: var(--color-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+
+  .restaurant-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .restaurant-logo i {
+    font-size: 26px;
+    color: var(--color-primary);
+  }
+
+  .header-titles .restaurant-name {
+    font-weight: 700;
+    font-size: 1.5rem;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .header-titles .report-subtitle {
+    font-weight: 500;
+    font-size: 0.92rem;
+    opacity: 0.9;
+    margin: 2px 0 0;
+    letter-spacing: 0.3px;
+  }
+
+  .header-meta {
+    text-align: right;
+    z-index: 1;
+    font-size: 0.86rem;
+    line-height: 1.6;
+  }
+
+  .header-meta .meta-label {
+    opacity: 0.78;
+    margin-right: 6px;
+  }
+
+  .header-meta .meta-value {
+    font-weight: 600;
+  }
+
+  /* ===================== SUMMARY CARDS ===================== */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-top: 26px;
+  }
+
+  .summary-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 20px 20px 18px;
+    box-shadow: var(--shadow-card);
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+    position: relative;
+  }
+
+  .summary-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-card-hover);
+    border-color: rgba(211, 47, 47, 0.25);
+  }
+
+  .summary-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    color: var(--color-secondary);
+    background: var(--color-primary);
+    margin-bottom: 14px;
+  }
+
+  .summary-card.card-orders .summary-icon { background: var(--chart-5); }
+  .summary-card.card-aov .summary-icon { background: var(--chart-3); }
+  .summary-card.card-units .summary-icon { background: var(--chart-4); }
+  .summary-card.card-bestseller .summary-icon { background: var(--chart-6); }
+  .summary-card.card-handler .summary-icon { background: var(--chart-2); }
+
+  .summary-number {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.65rem;
+    margin: 0 0 2px;
+    color: var(--color-text-main);
+  }
+
+  .summary-title {
+    font-size: 0.82rem;
+    color: var(--color-text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin: 0;
+  }
+
+  .summary-sub {
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+    margin-top: 4px;
+  }
+
+  /* ===================== SECTION CARDS ===================== */
+  .panel {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    padding: 24px;
+    margin-top: 24px;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .panel-title {
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .panel-title .title-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: rgba(211, 47, 47, 0.1);
+    color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+  }
+
+  .panel-badge {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    background: rgba(211, 47, 47, 0.08);
+    padding: 5px 12px;
+    border-radius: 999px;
+  }
+
+  .charts-row-secondary {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 24px;
+  }
+
+  .chart-container {
+    position: relative;
+    height: 340px;
+    width: 100%;
+  }
+
+  .chart-container.chart-pie { height: 300px; }
+  .chart-container.chart-bar { height: 300px; }
+
+  /* ===================== TABLES ===================== */
+  .table-wrap {
+    max-height: 420px;
+    overflow-y: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+  }
+
+  table.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  table.report-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--color-primary);
+    color: var(--color-secondary);
+    font-weight: 600;
+    text-align: left;
+    padding: 12px 16px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  table.report-table tbody td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-main);
+  }
+
+  table.report-table tbody tr:nth-child(even) {
+    background: #fbf5f5;
+  }
+
+  table.report-table tbody tr:hover {
+    background: rgba(211, 47, 47, 0.06);
+  }
+
+  .rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: var(--color-secondary);
+    font-weight: 700;
+    font-size: 0.78rem;
+  }
+
+  .cell-strong { font-weight: 600; }
+  .cell-money { font-weight: 700; color: var(--color-primary-dark); }
+
+  /* ===================== FOOTER ===================== */
+  .report-footer {
+    margin-top: 26px;
+    padding: 18px 24px;
+    border-top: 2px solid var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+  }
+
+  .report-footer .footer-brand {
+    font-weight: 600;
+    color: var(--color-text-main);
+  }
+
+  .footer-brand i { color: var(--color-primary); margin-right: 6px; }
+
+  /* ===================== RESPONSIVE ===================== */
+  @media (max-width: 992px) {
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-row-secondary { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 576px) {
+    .summary-grid { grid-template-columns: 1fr; }
+    .report-header { flex-direction: column; align-items: flex-start; }
+    .header-meta { text-align: left; }
+    body { padding: 16px 0 40px; }
+    .panel { padding: 18px; }
+  }
+
+  /* ===================== PRINT / A4 PDF ===================== */
+  @media print {
+    @page {
+      size: A4;
+      margin: 14mm 10mm;
+    }
+
+    body {
+      background: #ffffff;
+      padding: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .report-shell { max-width: 100%; padding: 0; }
+
+    .summary-card:hover,
+    table.report-table tbody tr:hover {
+      transform: none;
+      box-shadow: var(--shadow-card);
+      background: inherit;
+    }
+
+    .panel, .summary-card, .report-header {
+      box-shadow: none !important;
+      border: 1px solid var(--color-border);
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .table-wrap {
+      max-height: none;
+      overflow: visible;
+    }
+
+    table.report-table thead th {
+      position: static;
+    }
+
+    .chart-container { height: 260px !important; }
+
+    .print-page-number::after {
+      content: "Page " counter(page) " of " counter(pages);
+    }
+  }
+</style>
+</head>
+<body>
+<div class="report-shell">
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="report-header">
+    <div class="header-identity">
+      <div class="restaurant-logo">
+        {% if restaurant.logo_url %}
+          <img src="{{ restaurant.logo_url }}" alt="{{ restaurant.name|default:'Restaurant' }} logo">
+        {% else %}
+          <i class="fa-solid fa-utensils"></i>
+        {% endif %}
+      </div>
+      <div class="header-titles">
+        <p class="restaurant-name font-display">{{ restaurant.name|default:"Restaurant Name" }}</p>
+        <p class="report-subtitle">Weekly Business Report</p>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div><span class="meta-label">Report Duration:</span><span class="meta-value">{{ report.duration|default:"—" }}</span></div>
+      <div><span class="meta-label">Generated On:</span><span class="meta-value">{{ report.generated_at|date:"d M Y, h:i A"|default:"—" }}</span></div>
+    </div>
+  </header>
+
+  <!-- ===================== SUMMARY CARDS ===================== -->
+  <section class="summary-grid">
+    <div class="summary-card card-revenue">
+      <div class="summary-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+      <p class="summary-number">₹{{ summary.total_revenue|floatformat:2|intcomma }}</p>
+      <p class="summary-title">Total Revenue</p>
+    </div>
+
+    <div class="summary-card card-orders">
+      <div class="summary-icon"><i class="fa-solid fa-receipt"></i></div>
+      <p class="summary-number">{{ summary.total_orders|intcomma }}</p>
+      <p class="summary-title">Total Orders</p>
+    </div>
+
+    <div class="summary-card card-aov">
+      <div class="summary-icon"><i class="fa-solid fa-chart-line"></i></div>
+      <p class="summary-number">₹{{ summary.average_order_value|floatformat:2|intcomma }}</p>
+      <p class="summary-title">Average Order Value</p>
+    </div>
+
+    <div class="summary-card card-units">
+      <div class="summary-icon"><i class="fa-solid fa-bowl-food"></i></div>
+      <p class="summary-number">{{ summary.total_units_sold|intcomma }}</p>
+      <p class="summary-title">Total Units Sold</p>
+    </div>
+
+    <div class="summary-card card-bestseller">
+      <div class="summary-icon"><i class="fa-solid fa-star"></i></div>
+      <p class="summary-number" style="font-size:1.2rem;">{{ summary.best_seller.item_name|default:"—" }}</p>
+      <p class="summary-title">Best Seller</p>
+      {% if summary.best_seller.units_sold %}
+        <p class="summary-sub">{{ summary.best_seller.units_sold }} units sold</p>
+      {% endif %}
+    </div>
+
+    <div class="summary-card card-handler">
+      <div class="summary-icon"><i class="fa-solid fa-user-tie"></i></div>
+      <p class="summary-number" style="font-size:1.2rem;">{{ summary.best_order_handler.Staff_Assigned__Name|default:"—" }}</p>
+      <p class="summary-title">Best Order Handler</p>
+      {% if summary.best_order_handler.orders_handled %}
+        <p class="summary-sub">{{ summary.best_order_handler.orders_handled }} orders handled</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- ===================== LINE CHART: REVENUE TREND ===================== -->
+  <section class="panel">
+    <div class="panel-header">
+      <h2 class="panel-title"><span class="title-icon"><i class="fa-solid fa-chart-area"></i></span>Revenue Trend</h2>
+      <span class="panel-badge">Last 7 Days</span>
+    </div>
+    <div class="chart-container">
+      <canvas id="revenueTrendChart" role="img" aria-label="Revenue trend for the last 7 days"></canvas>
+    </div>
+  </section>
+
+  <!-- ===================== PIE + BAR CHARTS ===================== -->
+  <section class="charts-row-secondary">
+    <div class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title"><span class="title-icon"><i class="fa-solid fa-chart-pie"></i></span>Revenue Distribution</h2>
+      </div>
+      <div class="chart-container chart-pie">
+        <canvas id="revenueDistributionChart" role="img" aria-label="Revenue distribution by menu item"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title"><span class="title-icon"><i class="fa-solid fa-ranking-star"></i></span>Top 5 Best Sellers</h2>
+      </div>
+      <div class="chart-container chart-bar">
+        <canvas id="topSellersChart" role="img" aria-label="Top five best selling menu items"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TABLE 1: DAILY REVENUE ===================== -->
+  <section class="panel">
+    <div class="panel-header">
+      <h2 class="panel-title"><span class="title-icon"><i class="fa-solid fa-table-list"></i></span>Daily Revenue</h2>
+    </div>
+    <div class="table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Orders</th>
+            <th>Revenue</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in tables.daily_revenue %}
+          <tr>
+            <td class="cell-strong">{{ row.date }}</td>
+            <td>{{ row.orders }}</td>
+            <td class="cell-money">₹{{ row.revenue|floatformat:2|intcomma }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" class="text-center text-muted">No data available for this period.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== TABLE 2: TOP 5 BEST SELLERS ===================== -->
+  <section class="panel">
+    <div class="panel-header">
+      <h2 class="panel-title"><span class="title-icon"><i class="fa-solid fa-trophy"></i></span>Top 5 Best Sellers</h2>
+    </div>
+    <div class="table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Item</th>
+            <th>Units Sold</th>
+            <th>Revenue</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in tables.top_five_best_sellers %}
+          <tr>
+            <td><span class="rank-badge">{{ forloop.counter }}</span></td>
+            <td class="cell-strong">{{ row.item_name }}</td>
+            <td>{{ row.units_sold }}</td>
+            <td class="cell-money">₹{{ row.revenue|floatformat:2|intcomma }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="text-center text-muted">No data available for this period.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="report-footer">
+    <div class="footer-brand"><i class="fa-solid fa-circle-check"></i>Generated automatically by Restaurant POS</div>
+    <div>Report Generation Time: {{ report.generated_at|date:"d M Y, h:i:s A"|default:"—" }}</div>
+    <div class="print-page-number"></div>
+  </footer>
+
+</div>
+
+<!-- ===================== CHART DATA (safely serialized) ===================== -->
+{{ charts.revenue_per_day|json_script:"revenueTrendData" }}
+{{ charts.revenue_distribution|json_script:"revenueDistributionData" }}
+{{ charts.top_five_best_sellers|json_script:"topSellersChartData" }}
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const palette = [
+      getComputedStyle(document.documentElement).getPropertyValue('--chart-1').trim(),
+      getComputedStyle(document.documentElement).getPropertyValue('--chart-2').trim(),
+      getComputedStyle(document.documentElement).getPropertyValue('--chart-3').trim(),
+      getComputedStyle(document.documentElement).getPropertyValue('--chart-4').trim(),
+      getComputedStyle(document.documentElement).getPropertyValue('--chart-5').trim(),
+      getComputedStyle(document.documentElement).getPropertyValue('--chart-6').trim(),
+      getComputedStyle(document.documentElement).getPropertyValue('--chart-7').trim()
+    ];
+
+    function readJSON(id) {
+      const el = document.getElementById(id);
+      if (!el) return [];
+      try {
+        const data = JSON.parse(el.textContent);
+        return Array.isArray(data) ? data : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function pick(obj, keys, fallback) {
+      for (const k of keys) {
+        if (obj && obj[k] !== undefined && obj[k] !== null) return obj[k];
+      }
+      return fallback;
+    }
+
+    /* ---------- LINE CHART: Revenue Trend ---------- */
+    const trendRaw = readJSON("revenueTrendData");
+    const trendLabels = trendRaw.map(d => pick(d, ["day_label", "day", "date"], ""));
+    const trendValues = trendRaw.map(d => Number(pick(d, ["revenue", "total_revenue"], 0)));
+
+    const trendCtx = document.getElementById("revenueTrendChart");
+    if (trendCtx) {
+      const gradient = trendCtx.getContext("2d").createLinearGradient(0, 0, 0, 320);
+      gradient.addColorStop(0, "rgba(211, 47, 47, 0.32)");
+      gradient.addColorStop(1, "rgba(211, 47, 47, 0.02)");
+
+      const lineGradient = trendCtx.getContext("2d").createLinearGradient(0, 0, 600, 0);
+      lineGradient.addColorStop(0, "#ff6659");
+      lineGradient.addColorStop(1, "#a02323");
+
+      new Chart(trendCtx, {
+        type: "line",
+        data: {
+          labels: trendLabels,
+          datasets: [{
+            label: "Revenue",
+            data: trendValues,
+            borderColor: lineGradient,
+            backgroundColor: gradient,
+            fill: true,
+            tension: 0.42,
+            borderWidth: 3,
+            pointRadius: 4,
+            pointBackgroundColor: "#ffffff",
+            pointBorderColor: "#d32f2f",
+            pointBorderWidth: 2,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 900, easing: "easeOutQuart" },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: "#23201f",
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: {
+                label: function (ctx) { return " ₹" + ctx.parsed.y.toLocaleString("en-IN"); }
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { family: "Inter" } } },
+            y: {
+              beginAtZero: true,
+              grid: { color: "#f0e9e9" },
+              ticks: {
+                font: { family: "Inter" },
+                callback: function (value) { return "₹" + value.toLocaleString("en-IN"); }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    /* ---------- PIE CHART: Revenue Distribution ---------- */
+    const distRaw = readJSON("revenueDistributionData");
+    const distLabels = distRaw.map(d => pick(d, ["item_name", "label"], ""));
+    const distValues = distRaw.map(d => Number(pick(d, ["revenue", "value"], 0)));
+
+    const distCtx = document.getElementById("revenueDistributionChart");
+    if (distCtx) {
+      new Chart(distCtx, {
+        type: "pie",
+        data: {
+          labels: distLabels,
+          datasets: [{
+            data: distValues,
+            backgroundColor: distLabels.map((_, i) => palette[i % palette.length]),
+            borderColor: "#ffffff",
+            borderWidth: 2,
+            hoverOffset: 10
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { animateRotate: true, duration: 900 },
+          plugins: {
+            legend: {
+              position: "right",
+              labels: { font: { family: "Inter", size: 12 }, boxWidth: 12, padding: 14 }
+            },
+            tooltip: {
+              backgroundColor: "#23201f",
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: {
+                label: function (ctx) {
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                  const pct = total ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+                  return " " + ctx.label + ": ₹" + ctx.parsed.toLocaleString("en-IN") + " (" + pct + "%)";
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    /* ---------- BAR CHART: Top 5 Best Sellers ---------- */
+    const sellersRaw = readJSON("topSellersChartData");
+    const sellerLabels = sellersRaw.map(d => pick(d, ["item_name", "label"], ""));
+    const sellerValues = sellersRaw.map(d => Number(pick(d, ["units_sold", "value"], 0)));
+
+    const sellerCtx = document.getElementById("topSellersChart");
+    if (sellerCtx) {
+      new Chart(sellerCtx, {
+        type: "bar",
+        data: {
+          labels: sellerLabels,
+          datasets: [{
+            label: "Units Sold",
+            data: sellerValues,
+            backgroundColor: sellerLabels.map((_, i) => palette[i % palette.length]),
+            borderRadius: 8,
+            maxBarThickness: 28
+          }]
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 900, easing: "easeOutQuart" },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: "#23201f",
+              padding: 10,
+              cornerRadius: 8
+            }
+          },
+          scales: {
+            x: { beginAtZero: true, grid: { color: "#f0e9e9" }, ticks: { font: { family: "Inter" } } },
+            y: { grid: { display: false }, ticks: { font: { family: "Inter", size: 12 } } }
+          }
+        }
+      });
+    }
+  });
+</script>
+</body>
+</html>

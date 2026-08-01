@@ -23,4 +23,5 @@ urlpatterns = [
     path('menu/',include('Menu.urls')),
     path('order/',include('Order.urls')),
     path('analytics/',include('Analytics.urls')),
+    
 ]

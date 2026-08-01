@@ -1,6 +1,13 @@
 from django.db.models import (
     Sum,
-    Count
+    Count,
+    F,
+    DecimalField,
+    ExpressionWrapper
+)
+
+from django.db.models.functions import (
+    TruncDate
 )
 
 from Order.models.order import (
@@ -28,26 +35,65 @@ def get_total_orders_between_dates(
     start_date,
     end_date
 ):
-    orders = get_orders_between_dates(
+    return get_orders_between_dates(
         start_date,
         end_date
-    )
-
-    return orders.count()
+    ).count()
 
 
 def get_revenue_between_dates(
     start_date,
     end_date
 ):
-    orders = get_orders_between_dates(
-        start_date,
-        end_date
+    return (
+        get_orders_between_dates(
+            start_date,
+            end_date
+        )
+        .aggregate(
+            revenue=Sum("Total")
+        )["revenue"] or 0
     )
 
-    return orders.aggregate(
-        revenue=Sum("Total")
-    )["revenue"] or 0
+
+def get_revenue_per_day_between_dates(
+    start_date,
+    end_date
+):
+    return (
+        get_orders_between_dates(
+            start_date,
+            end_date
+        )
+        .annotate(
+            day=TruncDate("created_at")
+        )
+        .values("day")
+        .annotate(
+            revenue=Sum("Total")
+        )
+        .order_by("day")
+    )
+
+
+def get_orders_per_day_between_dates(
+    start_date,
+    end_date
+):
+    return (
+        get_orders_between_dates(
+            start_date,
+            end_date
+        )
+        .annotate(
+            day=TruncDate("created_at")
+        )
+        .values("day")
+        .annotate(
+            total_orders=Count("id")
+        )
+        .order_by("day")
+    )
 
 
 def get_order_items_between_dates(
@@ -62,6 +108,21 @@ def get_order_items_between_dates(
     )
 
 
+def get_total_units_sold_between_dates(
+    start_date,
+    end_date
+):
+    return (
+        get_order_items_between_dates(
+            start_date,
+            end_date
+        )
+        .aggregate(
+            total_units=Sum("order_qty")
+        )["total_units"] or 0
+    )
+
+
 def get_best_seller_between_dates(
     start_date,
     end_date
@@ -73,13 +134,13 @@ def get_best_seller_between_dates(
         )
         .values(
             "item",
-            "item__Item_Name"
+            item_name=F("item__Item_Name")
         )
         .annotate(
-            total_qty=Sum("order_qty")
+            units_sold=Sum("order_qty")
         )
         .order_by(
-            "-total_qty"
+            "-units_sold"
         )
         .first()
     )
@@ -96,13 +157,13 @@ def get_top_five_best_sellers_between_dates(
         )
         .values(
             "item",
-            "item__ItemName"
+            item_name=F("item__Item_Name")
         )
         .annotate(
-            total_qty=Sum("order_qty")
+            units_sold=Sum("order_qty")
         )
         .order_by(
-            "-total_qty"
+            "-units_sold"
         )[:5]
     )
 
@@ -121,7 +182,7 @@ def get_best_order_handler_between_dates(
         )
         .values(
             "Staff_Assigned",
-            "Staff_Assigned__Name"
+            staff_name=F("Staff_Assigned__Name")
         )
         .annotate(
             total_orders=Count("id"),
@@ -131,4 +192,35 @@ def get_best_order_handler_between_dates(
             "-total_orders"
         )
         .first()
+    )
+
+
+def get_revenue_distribution_between_dates(
+    start_date,
+    end_date
+):
+    return (
+        get_order_items_between_dates(
+            start_date,
+            end_date
+        )
+        .annotate(
+            item_revenue=ExpressionWrapper(
+                F("unit_price") * F("order_qty"),
+                output_field=DecimalField(
+                    max_digits=12,
+                    decimal_places=2
+                )
+            )
+        )
+        .values(
+            "item",
+            item_name=F("item__Item_Name")
+        )
+        .annotate(
+            revenue=Sum("item_revenue")
+        )
+        .order_by(
+            "-revenue"
+        )
     )
