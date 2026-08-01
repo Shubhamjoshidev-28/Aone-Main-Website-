@@ -4,10 +4,16 @@ from rest_framework import (
 from Order.models.order import (
     Order
 )
+from Order.serializer.order_items_serializer import (
+    OrderItemSerializer
+)
 
-class OrderSerializer (
+class CreateOrderSerializer (
     serializers.ModelSerializer
 ):
+    items = OrderItemSerializer(
+        many=True
+    )
     class Meta:
         model = Order
         fields = [
@@ -16,6 +22,7 @@ class OrderSerializer (
             'Table_No',
             'Car_No',
             'Staff_Assigned',
+            'items',
             'Total',
             'Source',
             'Payment_Status',

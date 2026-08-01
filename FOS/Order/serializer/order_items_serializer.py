@@ -6,13 +6,13 @@ from Order.models.order_items import (
 )
 
 class OrderItemSerializer(
-    serializers
+    serializers.ModelSerializer
 ):
     class Meta:
         model = Order_Items
         fields = [
             'id',
-            'item_id',
+            'item',
             'unit_price',
             'order_qty'
         ]

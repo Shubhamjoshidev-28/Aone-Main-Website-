@@ -11,7 +11,9 @@ from Order.models.order_items import (
 from django.db import (
     transaction
 )
-
+from Order.serializer.order_detail_serializer import (
+    OrderDetailSerializer
+)
 from Order.selectors.order_items_selector import (
     get_order_item_by_order_id
 )
@@ -60,11 +62,11 @@ class OrderService:
 
             menu = item["item"]
 
-            qty = item["quantity"]
+            qty = item["order_qty"]
 
             Order_Items.objects.create(
-                order_id=order,
-                item_id=menu,
+                order=order,
+                item=menu,
                 unit_price=menu.Item_Price,
                 order_qty=qty
             )
@@ -84,8 +86,10 @@ class OrderService:
     
         order = get_order_by_id(order_id)
     
-        items = validated_data.pop("items")
-    
+        items = validated_data.pop(
+            "items",
+            None
+        )
         order.Cust_Name = validated_data.get(
             "Cust_Name",
             order.Cust_Name
@@ -126,26 +130,26 @@ class OrderService:
             order.Payment_Type
         )
     
-        Order_Items.objects.filter(
-            order_id=order
+        if items is not None:
+            Order_Items.objects.filter(
+            order=order
         ).delete()
     
-        for item in items:
-    
-            menu = item["item"]
-    
-            qty = item["quantity"]
-    
-            Order_Items.objects.create(
-                order_id=order,
-                item_id=menu,
-                unit_price=menu.Item_Price,
-                order_qty=qty
-            )
-    
-        order.Total = OrderService.order_total(order.id)
-    
-        order.save()
+            for item in items:
+        
+                menu = item["item"]
+        
+                qty = item["order_qty"]
+        
+                Order_Items.objects.create(
+                    order=order,
+                    item=menu,
+                    unit_price=menu.Item_Price,
+                    order_qty=qty
+                )
+        if items is not None:
+            order.Total = OrderService.order_total(order.id)
+            order.save()
     
         return order
 
@@ -168,30 +172,6 @@ class OrderService:
         return order
 
     @staticmethod
-    def order_details(
-        order_id
-    ):
-        order= get_order_by_id(
-            order_id
-        )
-        order_items = get_order_item_by_order_id(
-            order_id
-        )
+    def order_details(order_id):
 
-        return (
-            {
-                "id":order.id,
-                "Cust_Name":order.Cust_Name,
-                "Table_No":order.Table_No,
-                "Car_No":order.Car_No,
-                "Staff_Assigned":order.Staff_Assigned,
-                "Total":order.Total,
-                "order_items":order_items.item,
-                "Source":order.Source,
-                "Status":order.status,
-                "Payment_Status":order.Payment_Status,
-                "Payment_Type":order.Payment_Type,
-                "created_at":order.created_at
-            }
-        )
-    
+        return get_order_by_id(order_id)

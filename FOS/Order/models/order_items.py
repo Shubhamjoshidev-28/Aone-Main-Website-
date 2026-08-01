@@ -34,12 +34,9 @@ class Order_Items(
         null=True,
         blank=True
     )
-    unit_price = models.ForeignKey(
-        Menu,
-        on_delete=models.SET_NULL,
-        related_name='order_items',
-        null=True,
-        blank=True
+    unit_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2
     )
         
     order_qty = models.PositiveIntegerField(

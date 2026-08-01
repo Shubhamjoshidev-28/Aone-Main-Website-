@@ -1,8 +1,14 @@
 from rest_framework.views import (
     APIView
 )
-from Order.serializer.order_serializer import (
-    OrderSerializer
+from Order.serializer.create_order_serializer import (
+    CreateOrderSerializer
+)
+from Order.serializer.order_detail_serializer import (
+    OrderDetailSerializer
+)
+from Order.serializer.update_order_serializer import (
+    UpdateOrderSerializer
 )
 from Order.services.order_service import (
     OrderService
@@ -21,7 +27,7 @@ class CreateOrderView(
         self,
         request
     ):
-        serializer = OrderSerializer(
+        serializer = CreateOrderSerializer(
             data=request.data
         )
 
@@ -37,7 +43,7 @@ class CreateOrderView(
             {
                 "success":True,
                 "message":"Order Created Successfully",
-                "order":serializer.data
+                "order": OrderDetailSerializer(order).data
             },
             status=status.HTTP_201_CREATED
         )
@@ -50,20 +56,22 @@ class EditOrderView (
             request,
             order_id
     ):
-        serializer = OrderSerializer(
-            data=request.data
+        serializer = UpdateOrderSerializer(
+            data=request.data,
+            partial = True
         )
         serializer.is_valid(
             raise_exception=True
         )
         order = OrderService.update_order(
-            order_id
+            order_id,
+            validated_data=serializer.validated_data
         )
         return Response (
             {
                 "success":True,
                 "message":"Order Updated Successfully",
-                "order":serializer.data
+                "order": OrderDetailSerializer(order).data
             },
             status = status.HTTP_200_OK
         )
@@ -90,7 +98,7 @@ class DeleteOrderView(
         )
 
 
-def OrderListView (
+class OrderListView (
         APIView
 ):
     def get (
@@ -103,12 +111,12 @@ def OrderListView (
             {
                 "success":True,
                 "message":"Order Fetch Successfully",
-                "order":order
+                "order":OrderDetailSerializer(order, many=True).data
             },
             status = status.HTTP_200_OK   
         )
 
-def OrderDetailsView(
+class OrderDetailsView(
         APIView
 ):
     def get(
@@ -116,15 +124,12 @@ def OrderDetailsView(
             request,
             order_id
     ):
-        order=OrderService.order_details(
-            order_id
-        )
-        return Response (
-            {
-                "success":True,
-                "message":"Order Details Successfully Fetched",
-                "order":order
-            },
-            status= status.HTTP_200_OK
-        )
+        order = OrderService.order_details(order_id)
+
+        return Response(
+          {
+              "success": True,
+              "order": OrderDetailSerializer(order).data
+          }
+        )    
         
