@@ -19,6 +19,15 @@ from rest_framework.response import (
 from rest_framework import (
     status
 )
+from Accounts.permissions.owner_permission import (
+    IsOwner
+)
+from rest_framework.permissions import (
+    IsAuthenticated
+)
+from rest_framework_simplejwt.authentication import (
+    JWTAuthentication
+)
 
 class CreateOrderView(
     APIView
@@ -101,6 +110,13 @@ class DeleteOrderView(
 class OrderListView (
         APIView
 ):
+    permission_classes = [
+        IsOwner,
+        IsAuthenticated
+    ]
+    authentication_classes = [
+        JWTAuthentication
+    ]
     def get (
             self,
             request
@@ -119,6 +135,13 @@ class OrderListView (
 class OrderDetailsView(
         APIView
 ):
+    permission_classes = [
+        IsOwner,
+        IsAuthenticated
+    ]
+    authentication_classes = [
+        JWTAuthentication
+    ]
     def get(
             self,
             request,

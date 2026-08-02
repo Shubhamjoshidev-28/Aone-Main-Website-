@@ -42,8 +42,10 @@ INSTALLED_APPS = [
     'Order',
     'Analytics',
     'Menu',
-    'Details'
+    'Accounts'
 ]
+
+AUTH_USER_MODEL = "Accounts.Account"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -126,12 +128,31 @@ STATIC_URL = 'static/'
 from datetime import(
     timedelta
 )
-REST_FRAMEWORK={
-    'DEFAULT_AUTHENTICATION_CLASSES':[
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ],
+REST_FRAMEWORK = {
+
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+
+    ),
+
+    "DEFAULT_PERMISSION_CLASSES": (
+
+        "rest_framework.permissions.IsAuthenticated",
+
+    )
+
 }
+
+from datetime import timedelta
+
 SIMPLE_JWT = {
-        "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
-        "AUTH_HEADER_TYPES": ("Bearer",),
-    }
+    # Set the access token lifetime to 1 day
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
+    
+    # Optionally adjust refresh token lifetime as well
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': False,
+}

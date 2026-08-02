@@ -7,8 +7,8 @@ from django.core.validators import (
 from decimal import (
     Decimal
 )
-from Details.models.details import (
-    Details
+from Accounts.models.accounts import (
+    Account
 )
 
 
@@ -58,7 +58,7 @@ class Order (
         blank=True
     )
     Staff_Assigned = models.ForeignKey(
-        Details,
+        Account,
         on_delete=models.SET_NULL,
         related_name='Order',
         null= True,

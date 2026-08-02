@@ -16,10 +16,28 @@ from rest_framework.response import(
 from rest_framework import (
     status
 )
+from Accounts.permissions.owner_permission import (
+    IsOwner
+)
+from rest_framework.permissions import (
+    AllowAny,
+    IsAuthenticated
+)
+from rest_framework_simplejwt.authentication import (
+    JWTAuthentication
+)
 
 class CreateMenuView(
     APIView
 ):
+    permission_classes = [
+        IsOwner,
+        IsAuthenticated
+    ]
+    authentication_classes = [
+        JWTAuthentication
+    ]
+
     def post(
         self,
         request
@@ -46,6 +64,13 @@ class CreateMenuView(
 class EditMenuView(
     APIView
 ):
+    permission_classes = [
+        IsOwner,
+        IsAuthenticated
+    ]
+    authentication_classes = [
+        JWTAuthentication
+    ]
     
     def patch(
         self,
@@ -77,6 +102,7 @@ class GetMenuView(
     APIView
 ):
     
+    
     def get(
         self,
         request
@@ -101,6 +127,13 @@ class GetMenuView(
 class DeleteMenuView(
     APIView
 ):
+    permission_classes = [
+        IsOwner,
+        IsAuthenticated
+    ]
+    authentication_classes = [
+        JWTAuthentication
+    ]
     
     def delete(
             self,
