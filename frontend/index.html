@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AOne Chicken | Order Online</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="css/global.css" />
+  <link rel="stylesheet" href="css/index.css" />
+</head>
+<body>
+
+  <!-- ================= TOP BAR ================= -->
+  <header class="customer-header">
+    <div class="container flex-between">
+      <div class="restaurant-brand">
+        <div class="restaurant-logo"><i class="fa-solid fa-drumstick-bite"></i></div>
+        <div>
+          <h1>AOne Chicken</h1>
+          <span class="text-muted">Order fresh, order fast</span>
+        </div>
+      </div>
+
+      <button class="btn btn-icon cart-toggle-btn" id="cart-toggle-btn" aria-label="Open cart">
+        <i class="fa-solid fa-cart-shopping"></i>
+        <span class="cart-count" id="cart-count">0</span>
+      </button>
+    </div>
+
+    <div class="container search-bar-wrap">
+      <div class="input-icon-wrap search-bar">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input class="form-input" type="text" id="search-input" placeholder="Search for dishes..." />
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= CATEGORY TABS ================= -->
+  <nav class="category-nav">
+    <div class="container">
+      <div class="category-scroll" id="category-tabs">
+        <button class="category-chip active" data-category="All">All</button>
+        <!-- categories injected by index.js -->
+      </div>
+    </div>
+  </nav>
+
+  <!-- ================= MENU GRID ================= -->
+  <main class="container menu-main">
+    <div class="menu-grid" id="menu-grid">
+      <!-- menu cards injected by index.js -->
+    </div>
+
+    <div class="empty-state hidden" id="menu-empty">
+      <i class="fa-solid fa-bowl-food"></i>
+      <p>No items found. Try a different search.</p>
+    </div>
+  </main>
+
+  <!-- ================= FLOATING CART BUTTON (MOBILE) ================= -->
+  <button class="floating-cart-btn hidden" id="floating-cart-btn">
+    <span><i class="fa-solid fa-cart-shopping"></i> View Cart</span>
+    <span id="floating-cart-total">₹0</span>
+  </button>
+
+  <!-- ================= CART DRAWER ================= -->
+  <div class="drawer-overlay" id="cart-overlay"></div>
+  <aside class="cart-drawer" id="cart-drawer">
+    <div class="cart-drawer-header">
+      <h3><i class="fa-solid fa-cart-shopping"></i> Your Order</h3>
+      <button class="modal-close" id="close-cart-btn"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div class="cart-items" id="cart-items">
+      <div class="empty-state" id="cart-empty">
+        <i class="fa-solid fa-basket-shopping"></i>
+        <p>Your cart is empty.<br />Add items to get started.</p>
+      </div>
+    </div>
+
+    <div class="cart-summary" id="cart-summary">
+      <form id="order-form">
+        <div class="form-group">
+          <label class="form-label" for="cust-name">Customer Name</label>
+          <input class="form-input" type="text" id="cust-name" placeholder="Your name" required />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="table-no">Table Number</label>
+            <input class="form-input" type="number" id="table-no" placeholder="Optional" min="0" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="car-no">Car Number</label>
+            <input class="form-input" type="text" id="car-no" placeholder="Optional" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="phone-no">Phone Number</label>
+          <input class="form-input" type="tel" id="phone-no" placeholder="Your phone number" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Payment Type</label>
+          <div class="payment-toggle">
+            <button type="button" class="payment-option active" data-payment="Offline"><i class="fa-solid fa-money-bill-wave"></i> Cash</button>
+            <button type="button" class="payment-option" data-payment="Online"><i class="fa-solid fa-mobile-screen-button"></i> Online</button>
+          </div>
+        </div>
+
+        <div class="cart-totals">
+          <div class="cart-total-row">
+            <span>Subtotal</span>
+            <span id="cart-subtotal">₹0.00</span>
+          </div>
+          <div class="cart-total-row cart-total-grand">
+            <span>Total</span>
+            <span id="cart-grand-total">₹0.00</span>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" id="place-order-btn" data-loading-disable>
+          <i class="fa-solid fa-bag-shopping"></i> Place Order
+        </button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- ================= ORDER SUCCESS MODAL ================= -->
+  <div class="modal-overlay" id="success-modal">
+    <div class="modal-box">
+      <div class="modal-body success-modal-body">
+        <div class="success-icon"><i class="fa-solid fa-check"></i></div>
+        <h2>Order Placed!</h2>
+        <p class="text-muted">Your order <strong id="success-order-id">#0</strong> has been sent to the kitchen.</p>
+        <button class="btn btn-primary btn-block" id="success-close-btn">Order More</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/index.js"></script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register | Restaurant POS</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="css/global.css" />
+  <link rel="stylesheet" href="css/login.css" />
+</head>
+<body>
+
+  <div class="auth-page">
+    <div class="auth-panel">
+      <div class="auth-brand">
+        <div class="auth-brand-icon"><i class="fa-solid fa-store"></i></div>
+        <h2>Set up your restaurant</h2>
+        <p>Create the owner account that controls orders, menu and analytics.</p>
+      </div>
+      <ul class="auth-highlights">
+        <li><i class="fa-solid fa-shield-halved"></i> One owner account, full control</li>
+        <li><i class="fa-solid fa-users"></i> Add staff once you're in</li>
+        <li><i class="fa-solid fa-gauge-high"></i> Live dashboard from day one</li>
+      </ul>
+    </div>
+
+    <div class="auth-form-wrap">
+      <div class="auth-card card card-pad">
+        <h1 class="page-title">Create owner account</h1>
+        <p class="page-subtitle">This is a one-time setup for the restaurant owner</p>
+
+        <form id="register-form" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="name">Full Name</label>
+            <div class="input-icon-wrap">
+              <i class="fa-solid fa-id-card"></i>
+              <input class="form-input" type="text" id="name" placeholder="e.g. Rohan Sharma" required />
+            </div>
+            <span class="form-error" id="name-error"></span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="reg-username">Username</label>
+            <div class="input-icon-wrap">
+              <i class="fa-solid fa-user"></i>
+              <input class="form-input" type="text" id="reg-username" placeholder="Choose a username" autocomplete="username" required />
+            </div>
+            <span class="form-error" id="reg-username-error"></span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="phone">Phone Number</label>
+            <div class="input-icon-wrap">
+              <i class="fa-solid fa-phone"></i>
+              <input class="form-input" type="tel" id="phone" placeholder="e.g. 9876543210" required />
+            </div>
+            <span class="form-error" id="phone-error"></span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="reg-password">Password</label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-lock"></i>
+                <input class="form-input" type="password" id="reg-password" placeholder="Create a password" autocomplete="new-password" required />
+              </div>
+              <span class="form-error" id="reg-password-error"></span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="confirm-password">Confirm Password</label>
+              <div class="input-icon-wrap">
+                <i class="fa-solid fa-lock"></i>
+                <input class="form-input" type="password" id="confirm-password" placeholder="Re-enter password" autocomplete="new-password" required />
+              </div>
+              <span class="form-error" id="confirm-password-error"></span>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block" id="register-btn" data-loading-disable>
+            <i class="fa-solid fa-user-plus"></i> Register
+          </button>
+        </form>
+
+        <p class="auth-switch">
+          Already have an account?
+          <a href="login.html">Login here</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/register.js"></script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+/* ============================================================
+   LOGIN.CSS
+   Styles the login and register split-screen auth pages.
+   ============================================================ */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+}
+
+/* ---------- Left brand panel ---------- */
+.auth-panel {
+  flex: 1;
+  background: var(--color-primary);
+  color: var(--color-white);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 60px 64px;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-panel::after {
+  content: '';
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  right: -140px;
+  bottom: -160px;
+}
+
+.auth-brand-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  margin-bottom: 20px;
+}
+
+.auth-brand h2 {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.auth-brand p {
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 360px;
+  font-size: 0.95rem;
+}
+
+.auth-highlights {
+  margin-top: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.auth-highlights li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.92rem;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.auth-highlights i {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+}
+
+/* ---------- Right form panel ---------- */
+.auth-form-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  background: var(--color-bg);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 40px;
+}
+
+.auth-card .page-title {
+  margin-bottom: 4px;
+}
+
+.auth-card form {
+  margin-top: 28px;
+}
+
+.auth-switch {
+  margin-top: 22px;
+  text-align: center;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
+.auth-switch a {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.auth-switch-link {
+  display: block;
+  text-align: center;
+  margin-top: 14px;
+  font-size: 0.82rem;
+  color: var(--color-text-soft);
+}
+
+.auth-switch-link:hover {
+  color: var(--color-primary);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .auth-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 28px 22px;
+  }
+}
