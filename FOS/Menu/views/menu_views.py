@@ -101,6 +101,7 @@ class EditMenuView(
 class GetMenuView(
     APIView
 ):
+    permission_classes=[AllowAny]
     
     
     def get(

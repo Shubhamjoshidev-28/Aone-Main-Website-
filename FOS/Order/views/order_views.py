@@ -23,7 +23,8 @@ from Accounts.permissions.owner_permission import (
     IsOwner
 )
 from rest_framework.permissions import (
-    IsAuthenticated
+    IsAuthenticated,
+    AllowAny
 )
 from rest_framework_simplejwt.authentication import (
     JWTAuthentication
@@ -32,6 +33,7 @@ from rest_framework_simplejwt.authentication import (
 class CreateOrderView(
     APIView
 ):
+    permission_classes=[AllowAny]
     def post (
         self,
         request
@@ -63,7 +65,7 @@ class EditOrderView (
     def patch (
             self,
             request,
-            order_id
+            order
     ):
         serializer = UpdateOrderSerializer(
             data=request.data,
@@ -73,7 +75,7 @@ class EditOrderView (
             raise_exception=True
         )
         order = OrderService.update_order(
-            order_id,
+            order,
             validated_data=serializer.validated_data
         )
         return Response (
@@ -91,11 +93,11 @@ class DeleteOrderView(
     def delete (
             self,
             request,
-            order_id
+            order
     ):
 
         order=OrderService.delete_order(
-            order_id
+            order
         )
 
         return Response (
@@ -145,9 +147,9 @@ class OrderDetailsView(
     def get(
             self,
             request,
-            order_id
+            order
     ):
-        order = OrderService.order_details(order_id)
+        order = OrderService.order_details(order)
 
         return Response(
           {
