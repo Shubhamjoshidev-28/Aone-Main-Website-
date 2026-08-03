@@ -13,6 +13,22 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeTab = 'live';
   let pendingDeleteId = null;
 
+  /* Menu cache, shared by the New Order picker, the Edit Order "Add Item"
+     selector, and the item-name lookups used in View Order + the receipt. */
+  let menuItems = [];
+
+  /* Cart used while the New Order modal is open: { menuItemId: { item, qty } } */
+  let newOrderCart = {};
+  let newOrderType = 'Dine In';
+
+  /* Cart used while the Edit Order modal is open, seeded from the order's
+     existing order_items and mutated by qty +/-, delete, and Add Item. */
+  let editOrderCart = {};
+  let editOrderId = null;
+
+  /* Scratch cart for the shared Menu Selector modal (Edit Order -> Add Item). */
+  let selectorCart = {};
+
   const liveGrid = document.getElementById('live-orders-grid');
   const liveEmpty = document.getElementById('live-orders-empty');
   const liveCountEl = document.getElementById('live-count');
@@ -51,6 +67,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function formatMoney(value) {
     return `₹${Number(value || 0).toFixed(2)}`;
+  }
+
+  /* ---------------- Menu (shared cache) ---------------- */
+  async function loadMenu() {
+    try {
+      const response = await API.getMenu();
+      menuItems = response.menu || [];
+    } catch (err) {
+      /* toast already shown */
+    }
+  }
+
+  function getMenuItem(itemId) {
+    return menuItems.find((m) => m.id === itemId);
+  }
+
+  /** Real item name for an order_item row, falling back gracefully if the
+      menu item was since deleted (still shows something useful instead of
+      the old "Item #<id>" placeholder). */
+  function orderItemName(orderItem) {
+    const menuItem = getMenuItem(orderItem.item);
+    return menuItem ? menuItem.Item_Name : `Item #${orderItem.item}`;
   }
 
   /* ---------------- Load orders ---------------- */
@@ -174,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const items = order.order_items || [];
     const itemsRows = items.map((it) => `
       <tr>
-        <td>Item #${it.item}</td>
+        <td>${orderItemName(it)} <span class="text-muted">×${it.order_qty}</span></td>
         <td>${it.order_qty}</td>
         <td>${formatMoney(it.unit_price)}</td>
         <td>${formatMoney(it.unit_price * it.order_qty)}</td>
@@ -208,6 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
 
+    editOrderId = orderId;
     document.getElementById('edit-order-id').value = order.id;
     document.getElementById('edit-cust-name').value = order.Cust_Name || '';
     document.getElementById('edit-table-no').value = order.Table_No || '';
@@ -216,8 +255,102 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('edit-status').value = order.Status || 'Preparing';
     document.getElementById('edit-payment-status').value = order.Payment_Status || 'Pending';
 
+    /* Seed the editable items cart from the order's current order_items.
+       Each existing line keeps its own id/unit_price/qty so "Save Changes"
+       can send back exactly what's on screen. */
+    editOrderCart = {};
+    (order.order_items || []).forEach((it, index) => {
+      const menuItem = getMenuItem(it.item);
+      const key = `existing-${it.id != null ? it.id : index}`;
+      editOrderCart[key] = {
+        itemId: it.item,
+        name: menuItem ? menuItem.Item_Name : `Item #${it.item}`,
+        unit_price: Number(it.unit_price),
+        qty: it.order_qty
+      };
+    });
+    renderEditOrderItems();
+
     openModal('edit-order-modal');
   }
+
+  function getEditOrderTotal() {
+    return Object.values(editOrderCart).reduce((sum, e) => sum + e.unit_price * e.qty, 0);
+  }
+
+  function renderEditOrderItems() {
+    const listEl = document.getElementById('edit-order-items-list');
+    const emptyEl = document.getElementById('edit-order-items-empty');
+    const entries = Object.entries(editOrderCart);
+
+    emptyEl.classList.toggle('hidden', entries.length !== 0);
+    listEl.innerHTML = entries.map(([key, entry]) => `
+      <div class="order-item-edit-row" data-key="${key}">
+        <div class="order-item-edit-info">
+          <div class="order-item-edit-name">${entry.name}</div>
+          <div class="order-item-edit-price">${formatMoney(entry.unit_price)} x ${entry.qty} = ${formatMoney(entry.unit_price * entry.qty)}</div>
+        </div>
+        <div class="order-item-edit-actions">
+          <div class="qty-stepper">
+            <button type="button" class="edit-item-qty-minus" data-key="${key}"><i class="fa-solid fa-minus"></i></button>
+            <span>${entry.qty}</span>
+            <button type="button" class="edit-item-qty-plus" data-key="${key}"><i class="fa-solid fa-plus"></i></button>
+          </div>
+          <button type="button" class="btn btn-icon btn-sm edit-item-remove" data-key="${key}" title="Remove"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </div>
+    `).join('');
+
+    const total = getEditOrderTotal();
+    document.getElementById('edit-order-subtotal').textContent = formatMoney(total);
+    document.getElementById('edit-order-grand-total').textContent = formatMoney(total);
+  }
+
+  document.getElementById('edit-order-items-list').addEventListener('click', (e) => {
+    const plusBtn = e.target.closest('.edit-item-qty-plus');
+    const minusBtn = e.target.closest('.edit-item-qty-minus');
+    const removeBtn = e.target.closest('.edit-item-remove');
+
+    if (plusBtn) {
+      editOrderCart[plusBtn.dataset.key].qty += 1;
+      renderEditOrderItems();
+    }
+    if (minusBtn) {
+      const entry = editOrderCart[minusBtn.dataset.key];
+      if (entry.qty <= 1) {
+        delete editOrderCart[minusBtn.dataset.key];
+      } else {
+        entry.qty -= 1;
+      }
+      renderEditOrderItems();
+    }
+    if (removeBtn) {
+      delete editOrderCart[removeBtn.dataset.key];
+      renderEditOrderItems();
+    }
+  });
+
+  /* "Add Item" reuses the same Menu Selector modal/component as Create Order. */
+  document.getElementById('edit-add-item-btn').addEventListener('click', () => {
+    openMenuSelector((selectedEntries) => {
+      selectedEntries.forEach(({ item, qty }) => {
+        /* If this menu item is already on the order, bump its quantity
+           instead of adding a duplicate line. */
+        const existingKey = Object.keys(editOrderCart).find((k) => editOrderCart[k].itemId === item.id);
+        if (existingKey) {
+          editOrderCart[existingKey].qty += qty;
+        } else {
+          editOrderCart[`new-${item.id}-${Date.now()}`] = {
+            itemId: item.id,
+            name: item.Item_Name,
+            unit_price: Number(item.Item_Price),
+            qty
+          };
+        }
+      });
+      renderEditOrderItems();
+    });
+  });
 
   document.getElementById('edit-order-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -229,7 +362,15 @@ document.addEventListener('DOMContentLoaded', () => {
       Car_No: document.getElementById('edit-car-no').value.trim(),
       Payment_Type: document.getElementById('edit-payment-type').value,
       Status: document.getElementById('edit-status').value,
-      Payment_Status: document.getElementById('edit-payment-status').value
+      Payment_Status: document.getElementById('edit-payment-status').value,
+      /* The update endpoint replaces every order item whenever `items` is
+         present (see Order/services/order_service.py -> update_order), so
+         we always send the full, current set of items from the modal. */
+      items: Object.values(editOrderCart).map((entry) => ({
+        item: entry.itemId,
+        unit_price: entry.unit_price,
+        order_qty: entry.qty
+      }))
     };
 
     try {
@@ -240,6 +381,237 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       /* toast already shown */
     }
+  });
+
+  /* ---------------- Shared menu picker ----------------
+     Renders a searchable/filterable grid of available menu items with a
+     qty stepper on each card, bound to whichever cart object is passed in.
+     Used by both the New Order modal's inline menu and the Menu Selector
+     modal opened from Edit Order -> Add Item, so the picking experience
+     (and its markup/CSS) only needs to exist once. */
+  function clearCart(cartObj) {
+    Object.keys(cartObj).forEach((key) => delete cartObj[key]);
+  }
+
+  function createMenuPicker({ gridId, emptyId, searchId, categoryId, cart, onChange }) {
+    const gridEl = document.getElementById(gridId);
+    const emptyEl = document.getElementById(emptyId);
+    const searchInput = document.getElementById(searchId);
+    const categorySelect = document.getElementById(categoryId);
+
+    let searchTerm = '';
+    let categoryFilter = 'All';
+
+    function buildCategoryOptions() {
+      const categories = Array.from(new Set(menuItems.map((m) => m.Item_Category))).sort();
+      categorySelect.innerHTML = '<option value="All">All Categories</option>';
+      categories.forEach((cat) => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        categorySelect.appendChild(opt);
+      });
+    }
+
+    function getFiltered() {
+      return menuItems.filter((item) => {
+        if (!item.is_available) return false;
+        const matchesCategory = categoryFilter === 'All' || item.Item_Category === categoryFilter;
+        const matchesSearch = item.Item_Name.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesCategory && matchesSearch;
+      });
+    }
+
+    function render() {
+      const filtered = getFiltered();
+      gridEl.innerHTML = '';
+      emptyEl.classList.toggle('hidden', filtered.length !== 0);
+
+      filtered.forEach((item) => {
+        const qty = cart[item.id] ? cart[item.id].qty : 0;
+        const card = document.createElement('div');
+        card.className = 'order-menu-card';
+        card.innerHTML = `
+          <span class="order-menu-card-meta">${item.Item_Category} · ${item.Item_Size}</span>
+          <div class="order-menu-card-name">${item.Item_Name}</div>
+          <div class="order-menu-card-footer">
+            <span class="order-menu-card-price">${formatMoney(item.Item_Price)}</span>
+            <div class="qty-stepper">
+              <button type="button" class="picker-qty-minus" data-id="${item.id}"><i class="fa-solid fa-minus"></i></button>
+              <span>${qty}</span>
+              <button type="button" class="picker-qty-plus" data-id="${item.id}"><i class="fa-solid fa-plus"></i></button>
+            </div>
+          </div>
+        `;
+        gridEl.appendChild(card);
+      });
+    }
+
+    function changeQty(itemId, delta) {
+      const item = menuItems.find((m) => m.id === itemId);
+      if (!item) return;
+
+      const current = cart[itemId] ? cart[itemId].qty : 0;
+      const next = Math.max(0, current + delta);
+
+      if (next === 0) delete cart[itemId];
+      else cart[itemId] = { item, qty: next };
+
+      render();
+      if (onChange) onChange();
+    }
+
+    gridEl.addEventListener('click', (e) => {
+      const plus = e.target.closest('.picker-qty-plus');
+      const minus = e.target.closest('.picker-qty-minus');
+      if (plus) changeQty(Number(plus.dataset.id), 1);
+      if (minus) changeQty(Number(minus.dataset.id), -1);
+    });
+
+    let debounce;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => {
+        searchTerm = searchInput.value.trim();
+        render();
+      }, 200);
+    });
+
+    categorySelect.addEventListener('change', () => {
+      categoryFilter = categorySelect.value;
+      render();
+    });
+
+    return {
+      /** Rebuilds category options + resets filters, then renders. Call
+          every time the modal that owns this picker is (re)opened. */
+      refresh() {
+        buildCategoryOptions();
+        searchTerm = '';
+        categoryFilter = 'All';
+        searchInput.value = '';
+        categorySelect.value = 'All';
+        render();
+      },
+      render
+    };
+  }
+
+  const newOrderMenuPicker = createMenuPicker({
+    gridId: 'new-order-menu-grid',
+    emptyId: 'new-order-menu-empty',
+    searchId: 'new-order-menu-search',
+    categoryId: 'new-order-menu-category',
+    cart: newOrderCart,
+    onChange: updateNewOrderTotals
+  });
+
+  const selectorMenuPicker = createMenuPicker({
+    gridId: 'selector-menu-grid',
+    emptyId: 'selector-menu-empty',
+    searchId: 'selector-menu-search',
+    categoryId: 'selector-menu-category',
+    cart: selectorCart
+  });
+
+  /* ---------------- New Order ---------------- */
+  function updateNewOrderTotals() {
+    const total = Object.values(newOrderCart).reduce((sum, e) => sum + Number(e.item.Item_Price) * e.qty, 0);
+    document.getElementById('new-order-subtotal').textContent = formatMoney(total);
+    document.getElementById('new-order-grand-total').textContent = formatMoney(total);
+  }
+
+  function openNewOrderModal() {
+    document.getElementById('new-order-form').reset();
+    clearCart(newOrderCart);
+    newOrderType = 'Dine In';
+    document.querySelectorAll('.order-type-toggle .payment-option').forEach((b) => {
+      b.classList.toggle('active', b.dataset.orderType === 'Dine In');
+    });
+    newOrderMenuPicker.refresh();
+    updateNewOrderTotals();
+    openModal('new-order-modal');
+  }
+
+  document.getElementById('new-order-btn').addEventListener('click', openNewOrderModal);
+
+  document.querySelectorAll('.order-type-toggle .payment-option').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.order-type-toggle .payment-option').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      newOrderType = btn.dataset.orderType;
+      /* NOTE: the Order model has no Order_Type field (see Order/models/order.py),
+         so this selection currently only decides which of Table No. / Car No.
+         make sense to fill in on this screen — it isn't persisted on its own.
+         TODO: once the backend adds an Order_Type field, send it here. */
+    });
+  });
+
+  document.getElementById('new-order-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const entries = Object.values(newOrderCart);
+    if (entries.length === 0) {
+      Toast.error('Add at least one menu item to the order.');
+      return;
+    }
+
+    const custName = document.getElementById('new-cust-name').value.trim();
+    if (!custName) {
+      Toast.error('Please enter the customer name.');
+      return;
+    }
+
+    const tableNo = document.getElementById('new-table-no').value;
+    const carNo = document.getElementById('new-car-no').value.trim();
+    const total = Object.values(newOrderCart).reduce((sum, e2) => sum + Number(e2.item.Item_Price) * e2.qty, 0);
+
+    const payload = {
+      Cust_Name: custName,
+      Phone: document.getElementById('new-phone').value.trim() || null,
+      Table_No: tableNo ? Number(tableNo) : null,
+      Car_No: carNo || null,
+      Source: 'Owner',
+      Status: document.getElementById('new-order-status').value,
+      Payment_Status: document.getElementById('new-payment-status').value,
+      Payment_Type: document.getElementById('new-payment-type').value,
+      Total: total.toFixed(2),
+      items: entries.map(({ item, qty }) => ({
+        item: item.id,
+        unit_price: item.Item_Price,
+        order_qty: qty
+      }))
+    };
+
+    try {
+      const response = await API.createOrder(payload);
+      const orderId = response.order && response.order.id ? response.order.id : '';
+      Toast.success(`Order #${orderId} created successfully.`);
+      closeModal('new-order-modal');
+      await loadOrders();
+    } catch (err) {
+      /* toast already shown */
+    }
+  });
+
+  /* ---------------- Menu Selector modal (Edit Order -> Add Item) ---------------- */
+  let menuSelectorConfirmCallback = null;
+
+  function openMenuSelector(onConfirm) {
+    menuSelectorConfirmCallback = onConfirm;
+    clearCart(selectorCart);
+    selectorMenuPicker.refresh();
+    openModal('menu-selector-modal');
+  }
+
+  document.getElementById('selector-add-btn').addEventListener('click', () => {
+    const entries = Object.values(selectorCart);
+    if (entries.length === 0) {
+      Toast.error('Select at least one item to add.');
+      return;
+    }
+    if (menuSelectorConfirmCallback) menuSelectorConfirmCallback(entries);
+    closeModal('menu-selector-modal');
   });
 
   /* ---------------- Delete order ---------------- */
@@ -288,7 +660,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const items = order.order_items || [];
     const itemRows = items.map((it) => `
       <div class="receipt-row">
-        <span>${it.order_qty} x Item #${it.item}</span>
+        <span>${it.order_qty} x ${orderItemName(it)}</span>
         <span>${formatMoney(it.unit_price * it.order_qty)}</span>
       </div>
     `).join('');
@@ -342,5 +714,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  /* Menu items are needed for item-name lookups (Order Details, receipts)
+     and for the New Order / Add Item pickers, so load them alongside the
+     order list itself. */
+  loadMenu();
   loadOrders();
 });

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Staff | Restaurant POS</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="css/global.css" />
+  <link rel="stylesheet" href="css/staff.css" />
+</head>
+<body>
+
+  <div class="app-shell">
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- ================= SIDEBAR ================= -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-icon"><i class="fa-solid fa-utensils"></i></div>
+        <h2>Restaurant POS</h2>
+        <button class="btn btn-icon sidebar-close" id="sidebar-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html" class="sidebar-link" data-page="dashboard.html"><i class="fa-solid fa-receipt"></i> Orders</a>
+        <a href="analytics.html" class="sidebar-link" data-page="analytics.html"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
+        <a href="menu.html" class="sidebar-link" data-page="menu.html"><i class="fa-solid fa-book-open"></i> Menu</a>
+        <a href="staff.html" class="sidebar-link" data-page="staff.html"><i class="fa-solid fa-user-tie"></i> Staff</a>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="sidebar-link" id="logout-btn" style="width:100%"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+      </div>
+    </aside>
+
+    <!-- ================= MAIN ================= -->
+    <div class="app-main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="btn btn-icon sidebar-toggle" id="sidebar-toggle"><i class="fa-solid fa-bars"></i></button>
+          <span class="topbar-date" id="topbar-date"></span>
+        </div>
+        <div class="topbar-right">
+          <button class="notification-bell" id="notification-bell">
+            <i class="fa-solid fa-bell"></i>
+            <span class="notification-dot" id="notification-dot"></span>
+          </button>
+          <div class="topbar-user">
+            <div class="topbar-avatar" id="topbar-avatar">O</div>
+            <div>
+              <div class="topbar-user-name" id="topbar-user-name">Owner</div>
+              <div class="topbar-user-role">Owner</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="app-content">
+        <div class="flex-between page-heading">
+          <div>
+            <h1 class="page-title">Staff Management</h1>
+            <p class="page-subtitle">Add, edit and manage every staff account.</p>
+          </div>
+          <button class="btn btn-primary" id="add-staff-btn"><i class="fa-solid fa-user-plus"></i> New Staff</button>
+        </div>
+
+        <div class="staff-toolbar">
+          <div class="input-icon-wrap staff-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input class="form-input" type="text" id="staff-search-input" placeholder="Search Staff (name, username, phone)..." />
+          </div>
+          <select class="form-select staff-role-filter" id="staff-role-filter">
+            <option value="All">All Roles</option>
+            <option value="Manager">Manager</option>
+            <option value="Cashier">Cashier</option>
+            <option value="Kitchen">Kitchen</option>
+            <option value="Waiter">Waiter</option>
+          </select>
+          <select class="form-select staff-status-filter" id="staff-status-filter">
+            <option value="All">All Status</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Staff Name</th>
+                <th>Username</th>
+                <th>Phone</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Date Joined</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="staff-table-body"></tbody>
+          </table>
+        </div>
+        <div class="empty-state hidden" id="staff-table-empty">
+          <i class="fa-solid fa-users-slash"></i>
+          <p>No staff members found.</p>
+        </div>
+
+        <div class="pagination" id="staff-pagination">
+          <span class="pagination-info" id="staff-pagination-info"></span>
+          <div class="pagination-controls" id="staff-pagination-controls"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ================= VIEW STAFF MODAL ================= -->
+  <div class="modal-overlay" id="view-staff-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Staff Details</h3>
+        <button class="modal-close" data-close-modal="view-staff-modal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="view-staff-body"></div>
+    </div>
+  </div>
+
+  <!-- ================= CREATE / EDIT STAFF MODAL ================= -->
+  <div class="modal-overlay" id="staff-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="staff-modal-title">New Staff</h3>
+        <button class="modal-close" data-close-modal="staff-modal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="staff-form">
+        <div class="modal-body">
+          <input type="hidden" id="staff-id" />
+
+          <div class="form-group">
+            <label class="form-label" for="staff-name">Full Name</label>
+            <input class="form-input" type="text" id="staff-name" placeholder="e.g. Ramesh Kumar" required />
+          </div>
+
+          <!-- Username + Password are only collected when creating a new staff account. -->
+          <div class="form-row" id="staff-create-only-row">
+            <div class="form-group">
+              <label class="form-label" for="staff-username">Username</label>
+              <input class="form-input" type="text" id="staff-username" placeholder="e.g. ramesh.k" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="staff-password">Password</label>
+              <input class="form-input" type="password" id="staff-password" placeholder="Set a password" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="staff-phone">Phone</label>
+              <input class="form-input" type="tel" id="staff-phone" placeholder="10-digit phone number" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="staff-email">Email</label>
+              <input class="form-input" type="email" id="staff-email" placeholder="name@example.com" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="staff-role">Role</label>
+              <select class="form-select" id="staff-role">
+                <option value="Manager">Manager</option>
+                <option value="Cashier">Cashier</option>
+                <option value="Kitchen">Kitchen</option>
+                <option value="Waiter">Waiter</option>
+              </select>
+            </div>
+            <!-- Status is only relevant once a staff account already exists. -->
+            <div class="form-group" id="staff-status-row">
+              <label class="form-label" for="staff-status">Status</label>
+              <select class="form-select" id="staff-status">
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="staff-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="staff-save-btn" data-loading-disable><i class="fa-solid fa-floppy-disk"></i> Save Staff</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= DELETE CONFIRM MODAL ================= -->
+  <div class="modal-overlay" id="delete-staff-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Delete Staff</h3>
+        <button class="modal-close" data-close-modal="delete-staff-modal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete <strong id="delete-staff-name"></strong>? This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close-modal="delete-staff-modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirm-delete-staff-btn" data-loading-disable><i class="fa-solid fa-trash"></i> Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/staff.js"></script>
+</body>
+</html>

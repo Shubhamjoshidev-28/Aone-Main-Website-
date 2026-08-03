@@ -159,6 +159,28 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--color-primary);
 }
 
+/* ---------- Shared page heading ----------
+   Used by every management page (Orders, Menu, Staff, Analytics)
+   so the spacing/wrap behaviour only lives in one place. */
+.page-heading {
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* ---------- Shared section title (inside modals/pages) ---------- */
+.section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.section-divider {
+  border: none;
+  border-top: 1px dashed var(--color-border);
+  margin: 22px 0;
+}
+
 /* ---------- Buttons ---------- */
 .btn {
   display: inline-flex;
@@ -345,12 +367,16 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .input-icon-wrap .toggle-password {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--color-text-soft);
-  cursor: pointer;
+    position: absolute;
+    left: auto;         
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-soft);
+    cursor: pointer;
+    width: auto;
+    pointer-events: auto;
+    z-index: 2;
 }
 
 /* ---------- Tables ---------- */
@@ -425,6 +451,98 @@ tbody tr:hover {
 .badge-danger { background: var(--color-danger-bg); color: var(--color-danger); }
 .badge-info { background: var(--color-info-bg); color: var(--color-info); }
 .badge-muted { background: var(--color-bg-alt); color: var(--color-text-muted); }
+
+/* ---------- Shared table row actions ----------
+   Used by any management table (Menu, Staff, ...) that shows
+   icon buttons (view/edit/delete) in an "Actions" column. */
+.table-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ---------- Shared label/value detail grid ----------
+   Used inside order cards, the Order Details / View Staff
+   modals, and anywhere else a compact set of key-value facts
+   needs to be displayed. */
+.order-card-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.order-meta-item {
+  font-size: 0.8rem;
+}
+
+.order-meta-label {
+  color: var(--color-text-soft);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+@media (max-width: 640px) {
+  .order-card-meta {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Shared pagination ----------
+   Used by any table-driven page (Staff, and future paginated
+   lists) to move between pages of results. */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.pagination-info {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pagination-btn {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.pagination-btn.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 /* ---------- Toast Notifications ---------- */
 #toast-container {

@@ -3,12 +3,6 @@
    Menu management table + toolbar.
    ============================================================ */
 
-.page-heading {
-  margin-bottom: 22px;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
 .menu-toolbar {
   display: flex;
   gap: 14px;
@@ -41,10 +35,7 @@
   font-weight: 600;
 }
 
-.table-actions {
-  display: flex;
-  gap: 6px;
-}
+/* .table-actions now lives in global.css and is shared with Staff. */
 
 @media (max-width: 640px) {
   .menu-toolbar {

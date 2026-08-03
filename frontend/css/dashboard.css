@@ -3,12 +3,6 @@
    Orders page: live order cards + delivered orders table.
    ============================================================ */
 
-.page-heading {
-  margin-bottom: 22px;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
 /* ---------- Tabs ---------- */
 .order-tabs {
   display: flex;
@@ -86,24 +80,13 @@
   margin-top: 2px;
 }
 
+/* NOTE: the shared .order-card-meta / .order-meta-item / .order-meta-label
+   label-value grid now lives in global.css so the Order Details modal,
+   order cards, and the Staff "View" modal can all reuse it without
+   duplicating the rules. This file only adds the order-card-specific
+   spacing on top of it. */
 .order-card-meta {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
   margin-bottom: 16px;
-}
-
-.order-meta-item {
-  font-size: 0.8rem;
-}
-
-.order-meta-label {
-  color: var(--color-text-soft);
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  font-weight: 700;
-  margin-bottom: 2px;
 }
 
 .order-card-badges {
@@ -130,6 +113,118 @@
 .order-card-actions {
   display: flex;
   gap: 6px;
+}
+
+/* ---------- New Order / Edit Order: order type toggle ----------
+   Reuses the same visual language as index.css's .payment-toggle /
+   .payment-option (segmented buttons), just with a data-order-type
+   attribute instead of data-payment, and allowed to wrap to a 2nd
+   line on narrow screens since there are 3 options instead of 2. */
+.order-type-toggle {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ---------- New Order modal: inline menu picker ---------- */
+.order-menu-toolbar {
+  display: flex;
+  gap: 14px;
+  margin: 4px 0 16px;
+  flex-wrap: wrap;
+}
+
+.order-menu-search {
+  flex: 1;
+  min-width: 200px;
+}
+
+.order-menu-category {
+  max-width: 200px;
+}
+
+.order-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 4px 4px 4px 0;
+}
+
+/* Compact variant of index.css's .menu-card for use inside a modal */
+.order-menu-card {
+  background: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.order-menu-card-name {
+  font-weight: 700;
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+
+.order-menu-card-meta {
+  font-size: 0.72rem;
+  color: var(--color-text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 700;
+}
+
+.order-menu-card-price {
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.order-menu-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* ---------- Edit Order modal: order items list ---------- */
+.order-items-edit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 14px;
+}
+
+.order-item-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.order-item-edit-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.order-item-edit-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.order-item-edit-price {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.order-item-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 /* ---------- Receipt (58mm thermal look) ---------- */
@@ -195,9 +290,6 @@
   }
 }
 
-/* ---------- Responsive ---------- */
-@media (max-width: 640px) {
-  .order-card-meta {
-    grid-template-columns: 1fr;
-  }
-}
+/* ---------- Responsive ----------
+   (.order-card-meta collapsing to 1 column on small screens is
+   handled globally in global.css) */

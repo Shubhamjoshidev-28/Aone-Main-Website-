@@ -1,0 +1,56 @@
+/* ============================================================
+   STAFF.CSS
+   Staff management table + toolbar. Mirrors the layout used by
+   menu.css so the Staff page matches the rest of the dashboard.
+   ============================================================ */
+
+.staff-toolbar {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.staff-search {
+  flex: 1;
+  min-width: 220px;
+}
+
+.staff-role-filter,
+.staff-status-filter {
+  max-width: 200px;
+}
+
+.staff-name-cell {
+  font-weight: 600;
+}
+
+.staff-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.staff-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .staff-toolbar {
+    flex-direction: column;
+  }
+
+  .staff-role-filter,
+  .staff-status-filter {
+    max-width: none;
+  }
+}

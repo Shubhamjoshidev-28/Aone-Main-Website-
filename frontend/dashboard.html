@@ -6,6 +6,10 @@
   <title>Orders | Restaurant POS</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="css/global.css" />
+  <!-- Reuses the cart / menu-card / payment-toggle components built for the
+       customer ordering page (index.css) so the New Order + Add Item menu
+       pickers don't need a second copy of the same styles. -->
+  <link rel="stylesheet" href="css/index.css" />
   <link rel="stylesheet" href="css/dashboard.css" />
 </head>
 <body>
@@ -24,6 +28,7 @@
         <a href="dashboard.html" class="sidebar-link" data-page="dashboard.html"><i class="fa-solid fa-receipt"></i> Orders</a>
         <a href="analytics.html" class="sidebar-link" data-page="analytics.html"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
         <a href="menu.html" class="sidebar-link" data-page="menu.html"><i class="fa-solid fa-book-open"></i> Menu</a>
+        <a href="staff.html" class="sidebar-link" data-page="staff.html"><i class="fa-solid fa-user-tie"></i> Staff</a>
       </nav>
       <div class="sidebar-footer">
         <button class="sidebar-link" id="logout-btn" style="width:100%"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
@@ -58,7 +63,10 @@
             <h1 class="page-title">Orders</h1>
             <p class="page-subtitle">Track live orders and completed deliveries in real time.</p>
           </div>
-          <button class="btn btn-outline btn-sm" id="refresh-orders-btn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+          <div class="flex gap-sm">
+            <button class="btn btn-primary btn-sm" id="new-order-btn"><i class="fa-solid fa-plus"></i> New Order</button>
+            <button class="btn btn-outline btn-sm" id="refresh-orders-btn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+          </div>
         </div>
 
         <!-- ================= ORDER TABS ================= -->
@@ -112,9 +120,149 @@
     </div>
   </div>
 
+  <!-- ================= NEW ORDER MODAL ================= -->
+  <div class="modal-overlay" id="new-order-modal">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3>New Order</h3>
+        <button class="modal-close" data-close-modal="new-order-modal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="new-order-form">
+        <div class="modal-body">
+
+          <h4 class="section-title">Customer Details</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="new-cust-name">Customer Name</label>
+              <input class="form-input" type="text" id="new-cust-name" placeholder="Customer name" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="new-phone">Phone Number</label>
+              <input class="form-input" type="tel" id="new-phone" placeholder="Phone number" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Order Type</label>
+            <div class="order-type-toggle">
+              <button type="button" class="payment-option active" data-order-type="Dine In"><i class="fa-solid fa-utensils"></i> Dine In</button>
+              <button type="button" class="payment-option" data-order-type="Takeaway"><i class="fa-solid fa-bag-shopping"></i> Takeaway</button>
+              <button type="button" class="payment-option" data-order-type="Car Delivery"><i class="fa-solid fa-car"></i> Car Delivery</button>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="new-table-no">Table Number</label>
+              <input class="form-input" type="number" id="new-table-no" placeholder="Optional" min="0" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="new-car-no">Car Number</label>
+              <input class="form-input" type="text" id="new-car-no" placeholder="Optional" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="new-payment-type">Payment Type</label>
+              <select class="form-select" id="new-payment-type">
+                <option value="Offline">Offline (Cash)</option>
+                <option value="Online">Online</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="new-payment-status">Payment Status</label>
+              <select class="form-select" id="new-payment-status">
+                <option value="Pending">Pending</option>
+                <option value="Paid">Paid</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="new-order-status">Order Status</label>
+            <select class="form-select" id="new-order-status">
+              <option value="Preparing">Preparing</option>
+              <option value="Accepted">Accepted</option>
+              <option value="Ready To Collect">Ready To Collect</option>
+              <option value="Delivered">Delivered</option>
+            </select>
+          </div>
+
+          <hr class="section-divider" />
+
+          <h4 class="section-title">Menu</h4>
+          <div class="order-menu-toolbar">
+            <div class="input-icon-wrap order-menu-search">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input class="form-input" type="text" id="new-order-menu-search" placeholder="Search menu items..." />
+            </div>
+            <select class="form-select order-menu-category" id="new-order-menu-category">
+              <option value="All">All Categories</option>
+            </select>
+          </div>
+          <div class="order-menu-grid" id="new-order-menu-grid"></div>
+          <div class="empty-state hidden" id="new-order-menu-empty">
+            <i class="fa-solid fa-bowl-food"></i>
+            <p>No menu items match your search.</p>
+          </div>
+
+          <hr class="section-divider" />
+
+          <div class="cart-totals" style="margin:0; padding:0; border-top:none;">
+            <div class="cart-total-row">
+              <span>Subtotal</span>
+              <span id="new-order-subtotal">₹0.00</span>
+            </div>
+            <!-- TODO: Neither the Order nor Menu backend models expose a GST /
+                 tax field yet. Add a GST row here once the API returns one. -->
+            <div class="cart-total-row cart-total-grand">
+              <span>Grand Total</span>
+              <span id="new-order-grand-total">₹0.00</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="new-order-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="new-order-save-btn" data-loading-disable><i class="fa-solid fa-floppy-disk"></i> Save Order</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MENU SELECTOR MODAL (reused by Edit Order -> Add Item) ================= -->
+  <div class="modal-overlay" id="menu-selector-modal">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3>Add Item</h3>
+        <button class="modal-close" data-close-modal="menu-selector-modal"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="order-menu-toolbar">
+          <div class="input-icon-wrap order-menu-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input class="form-input" type="text" id="selector-menu-search" placeholder="Search menu items..." />
+          </div>
+          <select class="form-select order-menu-category" id="selector-menu-category">
+            <option value="All">All Categories</option>
+          </select>
+        </div>
+        <div class="order-menu-grid" id="selector-menu-grid"></div>
+        <div class="empty-state hidden" id="selector-menu-empty">
+          <i class="fa-solid fa-bowl-food"></i>
+          <p>No menu items match your search.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close-modal="menu-selector-modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="selector-add-btn"><i class="fa-solid fa-cart-plus"></i> Add Selected Items</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= EDIT ORDER MODAL ================= -->
   <div class="modal-overlay" id="edit-order-modal">
-    <div class="modal-box">
+    <div class="modal-box modal-lg">
       <div class="modal-header">
         <h3>Edit Order</h3>
         <button class="modal-close" data-close-modal="edit-order-modal"><i class="fa-solid fa-xmark"></i></button>
@@ -161,6 +309,31 @@
                 <option value="Pending">Pending</option>
                 <option value="Paid">Paid</option>
               </select>
+            </div>
+          </div>
+
+          <hr class="section-divider" />
+
+          <div class="flex-between" style="margin-bottom:12px;">
+            <h4 class="section-title" style="margin-bottom:0;">Order Items</h4>
+            <button type="button" class="btn btn-outline btn-sm" id="edit-add-item-btn"><i class="fa-solid fa-plus"></i> Add Item</button>
+          </div>
+          <div class="order-items-edit-list" id="edit-order-items-list"></div>
+          <div class="empty-state hidden" id="edit-order-items-empty">
+            <i class="fa-solid fa-bowl-food"></i>
+            <p>No items on this order yet. Use "Add Item" above.</p>
+          </div>
+
+          <div class="cart-totals" style="margin-top:16px;">
+            <div class="cart-total-row">
+              <span>Subtotal</span>
+              <span id="edit-order-subtotal">₹0.00</span>
+            </div>
+            <!-- TODO: Neither the Order nor Menu backend models expose a GST /
+                 tax field yet. Add a GST row here once the API returns one. -->
+            <div class="cart-total-row cart-total-grand">
+              <span>Grand Total</span>
+              <span id="edit-order-grand-total">₹0.00</span>
             </div>
           </div>
         </div>
