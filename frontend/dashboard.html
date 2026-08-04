@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Orders | Restaurant POS</title>
+  <title>Orders | A-One Barbeque</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="css/global.css" />
   <!-- Reuses the cart / menu-card / payment-toggle components built for the
@@ -21,7 +21,7 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-brand">
         <div class="sidebar-brand-icon"><i class="fa-solid fa-utensils"></i></div>
-        <h2>Restaurant POS</h2>
+        <h2>A-One Barbeque</h2>
         <button class="btn btn-icon sidebar-close" id="sidebar-close"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <nav class="sidebar-nav">
@@ -201,6 +201,19 @@
               <option value="All">All Categories</option>
             </select>
           </div>
+          <div class="menu-size-filter" id="new-order-size-filter">
+             <button type="button" class="size-filter-btn active" data-size="All">
+                 All
+             </button>
+         
+             <button type="button" class="size-filter-btn" data-size="Half">
+                 Half
+             </button>
+         
+             <button type="button" class="size-filter-btn" data-size="Full">
+                 Full
+             </button>
+         </div>
           <div class="order-menu-grid" id="new-order-menu-grid"></div>
           <div class="empty-state hidden" id="new-order-menu-empty">
             <i class="fa-solid fa-bowl-food"></i>
@@ -247,6 +260,19 @@
             <option value="All">All Categories</option>
           </select>
         </div>
+        <div class="menu-size-filter" id="selector-size-filter">
+             <button type="button" class="size-filter-btn active" data-size="All">
+                 All
+             </button>
+         
+             <button type="button" class="size-filter-btn" data-size="Half">
+                 Half
+             </button>
+         
+             <button type="button" class="size-filter-btn" data-size="Full">
+                 Full
+             </button>
+         </div>
         <div class="order-menu-grid" id="selector-menu-grid"></div>
         <div class="empty-state hidden" id="selector-menu-empty">
           <i class="fa-solid fa-bowl-food"></i>

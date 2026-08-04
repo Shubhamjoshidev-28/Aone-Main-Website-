@@ -73,9 +73,21 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadMenu() {
     try {
       const response = await API.getMenu();
-      menuItems = response.menu || [];
+      menuItems = response.menu_items || response.menu || [];
     } catch (err) {
       /* toast already shown */
+    }
+  }
+
+  /** Both the New Order picker and the Menu Selector (Edit Order -> Add Item)
+      call refresh() the moment their modal opens. loadMenu() is fired once
+      at startup and not awaited there, so if a modal is opened before that
+      first request resolves, menuItems would still be empty and the grid
+      would render with nothing in it. Guard against that race by loading
+      the menu on demand whenever it's still empty. */
+  async function ensureMenuLoaded() {
+    if (menuItems.length === 0) {
+      await loadMenu();
     }
   }
 
@@ -193,12 +205,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('refresh-orders-btn').addEventListener('click', loadOrders);
 
-  /* ---------------- Modal helpers ---------------- */
+  /* ---------------- Modal helpers ----------------
+     menuSelectorParentModalId lets openMenuSelector() (below) register a
+     modal that should be hidden while the Menu Selector is open and
+     automatically restored the moment the Menu Selector closes -- whether
+     that's via "Add Selected Items" or Cancel/X. Centralizing the restore
+     in closeModal() means both close paths behave identically without
+     duplicating logic. */
+  let menuSelectorParentModalId = null;
+
   function openModal(id) {
     document.getElementById(id).classList.add('show');
   }
   function closeModal(id) {
     document.getElementById(id).classList.remove('show');
+    if (id === 'menu-selector-modal' && menuSelectorParentModalId) {
+      const parentId = menuSelectorParentModalId;
+      menuSelectorParentModalId = null;
+      openModal(parentId);
+    }
   }
   document.querySelectorAll('[data-close-modal]').forEach((btn) => {
     btn.addEventListener('click', () => closeModal(btn.dataset.closeModal));
@@ -330,7 +355,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /* "Add Item" reuses the same Menu Selector modal/component as Create Order. */
+  /* "Add Item" reuses the same Menu Selector modal/component as Create Order.
+     Passing 'edit-order-modal' as the parent makes the Menu Selector behave
+     like a child dialog: Edit Order is hidden while it's open and reappears
+     the instant the Menu Selector closes (Add Selected Items, Cancel, or X),
+     so only one modal overlay is ever visible at a time. */
   document.getElementById('edit-add-item-btn').addEventListener('click', () => {
     openMenuSelector((selectedEntries) => {
       selectedEntries.forEach(({ item, qty }) => {
@@ -349,7 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
       renderEditOrderItems();
-    });
+    }, 'edit-order-modal');
   });
 
   document.getElementById('edit-order-form').addEventListener('submit', async (e) => {
@@ -393,14 +422,17 @@ document.addEventListener('DOMContentLoaded', () => {
     Object.keys(cartObj).forEach((key) => delete cartObj[key]);
   }
 
-  function createMenuPicker({ gridId, emptyId, searchId, categoryId, cart, onChange }) {
+  function createMenuPicker({ gridId, emptyId, searchId, categoryId, sizeFilterId, cart, onChange }) {
     const gridEl = document.getElementById(gridId);
     const emptyEl = document.getElementById(emptyId);
     const searchInput = document.getElementById(searchId);
     const categorySelect = document.getElementById(categoryId);
+    const sizeFilterEl = sizeFilterId ? document.getElementById(sizeFilterId) : null;
+    const sizeButtons = sizeFilterEl ? Array.from(sizeFilterEl.querySelectorAll('.size-filter-btn')) : [];
 
     let searchTerm = '';
     let categoryFilter = 'All';
+    let sizeFilter = 'All';
 
     function buildCategoryOptions() {
       const categories = Array.from(new Set(menuItems.map((m) => m.Item_Category))).sort();
@@ -418,7 +450,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!item.is_available) return false;
         const matchesCategory = categoryFilter === 'All' || item.Item_Category === categoryFilter;
         const matchesSearch = item.Item_Name.toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesCategory && matchesSearch;
+        const matchesSize = sizeFilter === 'All' || item.Item_Size === sizeFilter;
+        return matchesCategory && matchesSearch && matchesSize;
       });
     }
 
@@ -432,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const card = document.createElement('div');
         card.className = 'order-menu-card';
         card.innerHTML = `
-          <span class="order-menu-card-meta">${item.Item_Category} · ${item.Item_Size}</span>
+          <span class="order-menu-card-meta">${item.Item_Category} <span class="badge badge-size">${(item.Item_Size || '').toUpperCase()}</span></span>
           <div class="order-menu-card-name">${item.Item_Name}</div>
           <div class="order-menu-card-footer">
             <span class="order-menu-card-price">${formatMoney(item.Item_Price)}</span>
@@ -482,6 +515,19 @@ document.addEventListener('DOMContentLoaded', () => {
       render();
     });
 
+    /* Segmented Half / Full size filter, only wired up when this picker
+       instance was given a sizeFilterId (both New Order and the Menu
+       Selector pass one; any future picker can opt out). */
+    function setSizeFilter(value) {
+      sizeFilter = value;
+      sizeButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.size === value));
+      render();
+    }
+
+    sizeButtons.forEach((btn) => {
+      btn.addEventListener('click', () => setSizeFilter(btn.dataset.size));
+    });
+
     return {
       /** Rebuilds category options + resets filters, then renders. Call
           every time the modal that owns this picker is (re)opened. */
@@ -489,8 +535,10 @@ document.addEventListener('DOMContentLoaded', () => {
         buildCategoryOptions();
         searchTerm = '';
         categoryFilter = 'All';
+        sizeFilter = 'All';
         searchInput.value = '';
         categorySelect.value = 'All';
+        sizeButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.size === 'All'));
         render();
       },
       render
@@ -502,6 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
     emptyId: 'new-order-menu-empty',
     searchId: 'new-order-menu-search',
     categoryId: 'new-order-menu-category',
+    sizeFilterId: 'new-order-size-filter',
     cart: newOrderCart,
     onChange: updateNewOrderTotals
   });
@@ -511,6 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
     emptyId: 'selector-menu-empty',
     searchId: 'selector-menu-search',
     categoryId: 'selector-menu-category',
+    sizeFilterId: 'selector-size-filter',
     cart: selectorCart
   });
 
@@ -521,13 +571,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('new-order-grand-total').textContent = formatMoney(total);
   }
 
-  function openNewOrderModal() {
+  async function openNewOrderModal() {
     document.getElementById('new-order-form').reset();
     clearCart(newOrderCart);
     newOrderType = 'Dine In';
     document.querySelectorAll('.order-type-toggle .payment-option').forEach((b) => {
       b.classList.toggle('active', b.dataset.orderType === 'Dine In');
     });
+    await ensureMenuLoaded();
     newOrderMenuPicker.refresh();
     updateNewOrderTotals();
     openModal('new-order-modal');
@@ -597,9 +648,12 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ---------------- Menu Selector modal (Edit Order -> Add Item) ---------------- */
   let menuSelectorConfirmCallback = null;
 
-  function openMenuSelector(onConfirm) {
+  async function openMenuSelector(onConfirm, parentModalId = null) {
     menuSelectorConfirmCallback = onConfirm;
+    menuSelectorParentModalId = parentModalId;
     clearCart(selectorCart);
+    await ensureMenuLoaded();
+    if (parentModalId) closeModal(parentModalId);
     selectorMenuPicker.refresh();
     openModal('menu-selector-modal');
   }

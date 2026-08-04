@@ -293,3 +293,32 @@
 /* ---------- Responsive ----------
    (.order-card-meta collapsing to 1 column on small screens is
    handled globally in global.css) */
+
+
+   .menu-size-filter{
+    display:flex;
+    gap:10px;
+    margin-bottom:18px;
+}
+
+.size-filter-btn{
+    border:1px solid var(--color-border);
+    background:var(--color-white);
+    color:var(--color-text-muted);
+    padding:10px 18px;
+    border-radius:999px;
+    font-size:.85rem;
+    font-weight:600;
+    transition:.2s;
+}
+
+.size-filter-btn:hover{
+    border-color:var(--color-primary);
+    color:var(--color-primary);
+}
+
+.size-filter-btn.active{
+    background:var(--color-primary);
+    color:var(--color-white);
+    border-color:var(--color-primary);
+}
