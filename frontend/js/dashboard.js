@@ -2,7 +2,14 @@
    DASHBOARD.JS
    Owner Orders page: live orders, delivered orders, view/edit/
    delete, invoice generation (moves order to Delivered without
-   a page refresh) and frontend-generated 58mm receipt printing.
+   a page refresh) and invoice printing.
+
+   The backend is the single source of truth for the invoice: it
+   builds the invoice data, renders invoice.html, applies the
+   invoice CSS and converts it to a PDF (API.fetchInvoicePDF).
+   The frontend never generates, reconstructs, styles or formats
+   the invoice itself - it only requests the PDF, displays it, and
+   prints it exactly as received.
    ============================================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -166,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="order-card-actions">
             <button class="btn btn-icon btn-sm view-order-btn" data-id="${order.id}" title="View"><i class="fa-solid fa-eye"></i></button>
             <button class="btn btn-icon btn-sm edit-order-btn" data-id="${order.id}" title="Edit"><i class="fa-solid fa-pen"></i></button>
-            <button class="btn btn-icon btn-sm invoice-order-btn" data-id="${order.id}" title="Generate Invoice"><i class="fa-solid fa-receipt"></i></button>
+            <button class="btn btn-icon btn-sm print-order-btn" data-id="${order.id}" title="Print Receipt"> <i class="fa-solid fa-print"></i></button>
             <button class="btn btn-icon btn-sm delete-order-btn" data-id="${order.id}" title="Delete"><i class="fa-solid fa-trash"></i></button>
           </div>
         </div>
@@ -223,6 +230,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const parentId = menuSelectorParentModalId;
       menuSelectorParentModalId = null;
       openModal(parentId);
+    }
+    /* The receipt modal's preview iframe is loaded from a Blob URL
+       (see showReceipt()) - release it as soon as the modal closes so
+       we don't hold onto the PDF data URL longer than needed. */
+    if (id === 'receipt-modal') {
+      revokeReceiptPreview();
     }
   }
   document.querySelectorAll('[data-close-modal]').forEach((btn) => {
@@ -689,82 +702,222 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /* ---------------- Generate invoice (moves order to Delivered) ---------------- */
-  async function generateInvoice(orderId) {
-    const order = orders.find((o) => o.id === orderId);
-    if (!order) return;
+  /* ---------------- Invoice / printing workflow ----------------
+     The backend remains the single source of truth for the invoice: it
+     builds the invoice data, renders invoice.html, applies the invoice
+     CSS and converts the result to a PDF (API.fetchInvoicePDF -> GET
+     /order/print_invoice/<id>/, returned as application/pdf). The
+     frontend never builds invoice markup, never duplicates invoice CSS,
+     and never inserts order data (customer, items, totals, etc.) itself
+     - all of that lives in the PDF returned by the backend.
 
-    try {
-      const response = await API.editOrder(orderId, { Status: 'Delivered', Bill_Printed: true });
-      Toast.success('Invoice generated. Order moved to Delivered.');
+     Order lifecycle:
+       Live order
+         -> user clicks the print/invoice icon on the order
+         -> openInvoiceForPrinting() opens the EXISTING receipt modal
+            (no new browser window, no about:blank) and loads the
+            backend PDF into the on-screen preview iframe
+         -> user reviews the invoice inside the website, then clicks
+            "Print" inside the modal
+         -> handlePrintClick() calls print() on that SAME iframe - the
+            one already showing the invoice - triggering the browser's
+            native print dialog
+         -> ONLY once the browser reports the print dialog has closed
+            (see the 'afterprint' note below) do we call
+            API.editOrder(orderId, { Status: 'Delivered', Bill_Printed: true })
+         -> the local `orders` array is updated from that response and
+            render() is called - no page refresh needed
+         -> the order now has Status 'Delivered', so isLive() returns
+            false for it and it moves from Live Orders to Delivered
 
-      /* Update local state without a refresh */
-      const updated = response.order;
-      orders = orders.map((o) => (o.id === orderId ? updated : o));
-      render();
+       If the PDF fails to load, or the print dialog fails to open, the
+       order's Status and Bill_Printed are left untouched, the order
+       stays in Live Orders, and the user can retry.
 
-      showReceipt(updated);
-    } catch (err) {
-      /* toast already shown */
+     Browser limitation - please read before relying on this: no web API
+     lets a normal browser confirm that a physical printer actually
+     produced paper. 'afterprint' only tells us the browser's print
+     dialog was closed - it fires the same way whether the user clicked
+     "Print" or "Cancel" in that dialog, and it says nothing about the
+     thermal printer itself. It is the strongest signal a normal browser
+     exposes, so it is what this file uses, but it should be read as
+     "the print dialog was dismissed", not "the receipt was physically
+     printed". */
+
+  let receiptOrderId = null;
+  let receiptPreviewUrl = null;
+  let isPrinting = false;
+
+  const printReceiptBtn = document.getElementById('print-receipt-btn');
+  const printReceiptBtnDefaultLabel = printReceiptBtn ? printReceiptBtn.innerHTML : '';
+
+  /** Revokes the blob URL currently loaded in the on-screen preview
+      iframe (if any) so we don't leak memory across repeated opens. */
+  function revokeReceiptPreview() {
+    if (receiptPreviewUrl) {
+      URL.revokeObjectURL(receiptPreviewUrl);
+      receiptPreviewUrl = null;
     }
   }
 
-  /* ---------------- Receipt (built entirely on the frontend) ---------------- */
-  function buildReceiptHTML(order) {
-    const items = order.order_items || [];
-    const itemRows = items.map((it) => `
-      <div class="receipt-row">
-        <span>${it.order_qty} x ${orderItemName(it)}</span>
-        <span>${formatMoney(it.unit_price * it.order_qty)}</span>
-      </div>
-    `).join('');
-
-    return `
-      <div class="receipt-center">
-        <div class="receipt-title">AOne Chicken</div>
-        <div>Rajpura</div>
-        <div>+91XXXXXXXXXX</div>
-      </div>
-      <hr />
-      <div class="receipt-row"><span>Invoice</span><span>INV-${String(order.id).padStart(5, '0')}</span></div>
-      <div class="receipt-row"><span>Date</span><span>${formatTime(order.created_at)}</span></div>
-      <div class="receipt-row"><span>Customer</span><span>${order.Cust_Name || '-'}</span></div>
-      ${order.Table_No ? `<div class="receipt-row"><span>Table</span><span>${order.Table_No}</span></div>` : ''}
-      ${order.Car_No ? `<div class="receipt-row"><span>Car No.</span><span>${order.Car_No}</span></div>` : ''}
-      <hr />
-      ${itemRows || '<div class="receipt-row"><span>No items recorded</span></div>'}
-      <hr />
-      <div class="receipt-row receipt-total-row"><span>Total</span><span>${formatMoney(order.Total)}</span></div>
-      <div class="receipt-row"><span>Payment</span><span>${order.Payment_Type || '-'} (${order.Payment_Status || 'Pending'})</span></div>
-      <hr />
-      <div class="receipt-center">Thank you for ordering with us!</div>
-    `;
+  /** Toggles the Print button's busy state: disabled + a spinner label
+      while a print is in flight, so rapid/duplicate clicks can't start a
+      second print (or a second Status update) while one is running. */
+  function setPrintButtonBusy(busy) {
+    if (!printReceiptBtn) return;
+    isPrinting = busy;
+    printReceiptBtn.disabled = busy;
+    printReceiptBtn.innerHTML = busy
+      ? '<i class="fa-solid fa-spinner fa-spin"></i> Printing…'
+      : printReceiptBtnDefaultLabel;
   }
 
-  function showReceipt(order) {
-    document.getElementById('receipt-content').innerHTML = buildReceiptHTML(order);
+  /** Opens the receipt modal for orderId and loads the backend-generated
+      invoice PDF straight into it for preview. Nothing about the order
+      (customer, items, totals, invoice number...) is read or rendered by
+      this function - the iframe simply displays the PDF the backend
+      returned. This is also the entry point for printing: the same PDF
+      shown here is the one that gets printed, so there's no separate
+      window, no second fetch, and no rebuilding of the invoice. */
+  async function openInvoiceForPrinting(orderId) {
+    receiptOrderId = orderId;
+
+    const statusEl = document.getElementById('receipt-loading');
+    const frameEl = document.getElementById('receipt-pdf-frame');
+
+    revokeReceiptPreview();
+    frameEl.classList.add('hidden');
+    frameEl.removeAttribute('src');
+    statusEl.textContent = 'Loading invoice…';
+    statusEl.classList.remove('hidden', 'receipt-pdf-error');
+    setPrintButtonBusy(false);
+    if (printReceiptBtn) printReceiptBtn.disabled = true;
+
     openModal('receipt-modal');
+
+    try {
+      const pdfBlob = await API.fetchInvoicePDF(orderId);
+      receiptPreviewUrl = URL.createObjectURL(pdfBlob);
+      frameEl.src = receiptPreviewUrl;
+      frameEl.classList.remove('hidden');
+      statusEl.classList.add('hidden');
+      if (printReceiptBtn) printReceiptBtn.disabled = false;
+    } catch (err) {
+      console.error('Failed to load invoice PDF:', err);
+      statusEl.textContent = 'Could not load the invoice. Please try again.';
+      statusEl.classList.add('receipt-pdf-error');
+      if (printReceiptBtn) printReceiptBtn.disabled = true;
+    }
   }
 
-  document.getElementById('print-receipt-btn').addEventListener('click', () => {
-    window.print();
-  });
+  /* Kept as an alias so anything else still referencing the old name
+     keeps working - openInvoiceForPrinting() is the real entry point. */
+  const showReceipt = openInvoiceForPrinting;
+
+  /** Marks orderId Delivered on the backend and reflects that locally.
+      Called ONLY after a print operation has actually completed - never
+      just because the PDF was fetched, previewed, or Print was clicked. */
+  async function markOrderDelivered(orderId) {
+    try {
+      const response = await API.editOrder(orderId, { Status: 'Delivered', Bill_Printed: true });
+      const updated = response.order;
+      orders = orders.map((o) => (o.id === orderId ? updated : o));
+      render();
+      Toast.success('Invoice printed. Order moved to Delivered.');
+    } catch (err) {
+      /* toast already shown by API; the print itself already succeeded,
+         so nothing to undo - the order simply stays in its current
+         Status/Bill_Printed state and the user can print again to
+         retry the status update. */
+    }
+  }
+
+  /** Prints the invoice already loaded in the receipt modal's preview
+      iframe and, once the browser reports that print operation as
+      finished, moves the order to Delivered.
+
+      This prints the SAME iframe the user is already looking at inside
+      the receipt modal - not a new browser window, not an about:blank
+      popup, and not a hidden/off-DOM iframe built just-in-time for
+      printing (that approach was tried before and produced a blank
+      printed page in Chrome, because a hidden iframe's PDF viewer has no
+      chance to finish initializing before print() runs). Because this
+      iframe is already visible and fully rendered by the time the user
+      clicks Print, its content is ready to print reliably. */
+  async function handlePrintClick() {
+    if (isPrinting) return; // duplicate/rapid clicks while printing: ignored
+    if (!receiptOrderId) return;
+
+    const frameEl = document.getElementById('receipt-pdf-frame');
+    const orderId = receiptOrderId;
+
+    if (!receiptPreviewUrl || !frameEl.contentWindow) {
+      Toast.error('Invoice is still loading. Please wait a moment and try again.');
+      return;
+    }
+
+    setPrintButtonBusy(true);
+
+    const targetWindow = frameEl.contentWindow;
+
+    /* 'afterprint' is the strongest completion signal a normal browser
+       exposes for print(). It fires once the native print dialog has
+       been dismissed - Print or Cancel alike - with no way to confirm
+       the thermal printer produced paper. We treat it as "the print
+       operation has completed" in the browser's own sense of that
+       phrase, and only then touch order Status/Bill_Printed. */
+    function onAfterPrint() {
+      targetWindow.removeEventListener('afterprint', onAfterPrint);
+      setPrintButtonBusy(false);
+
+      const order = orders.find((o) => o.id === orderId);
+      const alreadyDelivered = order && order.Status === 'Delivered';
+
+      closeModal('receipt-modal');
+
+      if (alreadyDelivered) {
+        /* Reprinting an already-Delivered order: nothing to change on
+           the backend, so skip the redundant editOrder call. */
+        return;
+      }
+
+      markOrderDelivered(orderId);
+    }
+
+    try {
+      targetWindow.addEventListener('afterprint', onAfterPrint);
+      targetWindow.focus();
+      targetWindow.print();
+    } catch (err) {
+      console.error('Failed to open the browser print dialog:', err);
+      targetWindow.removeEventListener('afterprint', onAfterPrint);
+      setPrintButtonBusy(false);
+      Toast.error('Could not open the print dialog. Please try again.');
+      /* Print never actually started: order stays Live, Status and
+         Bill_Printed are untouched, user can retry. */
+    }
+  }
+
+  if (printReceiptBtn) {
+    printReceiptBtn.addEventListener('click', handlePrintClick);
+  }
 
   /* ---------------- Event delegation for order actions ---------------- */
   document.addEventListener('click', (e) => {
     const viewBtn = e.target.closest('.view-order-btn');
     const editBtn = e.target.closest('.edit-order-btn');
-    const invoiceBtn = e.target.closest('.invoice-order-btn');
     const deleteBtn = e.target.closest('.delete-order-btn');
     const printBtn = e.target.closest('.print-order-btn');
 
     if (viewBtn) viewOrder(Number(viewBtn.dataset.id));
     if (editBtn) editOrderModal(Number(editBtn.dataset.id));
-    if (invoiceBtn) generateInvoice(Number(invoiceBtn.dataset.id));
     if (deleteBtn) confirmDelete(Number(deleteBtn.dataset.id));
     if (printBtn) {
-      const order = orders.find((o) => o.id === Number(printBtn.dataset.id));
-      if (order) showReceipt(order);
+      const orderId = Number(printBtn.dataset.id);
+
+      if (orderId) {
+        openInvoiceForPrinting(orderId);
+      }
     }
   });
 

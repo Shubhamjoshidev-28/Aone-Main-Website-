@@ -226,11 +226,14 @@ const API = (() => {
     getOrderDetails: (orderId) =>
       request(`/order/order_details/${orderId}/`),
 
-    /* Backend renders the invoice as server-side HTML. We keep this available
-       for reference, but the POS generates the printable receipt on the
-       frontend itself (see dashboard.js -> buildReceiptHTML) as required. */
-    fetchInvoiceHTML: (orderId) =>
-      request(`/order/print_invoice/${orderId}/`, { rawResponse: true }).then((res) => res.text()),
+    /* Backend is the single source of truth for the invoice: it builds the
+       invoice data, renders invoice.html, applies the invoice CSS and
+       converts it to a PDF. This endpoint now returns application/pdf
+       (it used to return text/html), so we read the response as a Blob
+       instead of text. The frontend never parses, rebuilds or styles this
+       PDF - it only requests it, displays/prints it, and discards it. */
+    fetchInvoicePDF: (orderId) =>
+      request(`/order/print_invoice/${orderId}/`, { rawResponse: true }).then((res) => res.blob()),
 
     /* ---------------- Menu ---------------- */
     getMenu: () =>

@@ -16,44 +16,96 @@
 
     <style>
 
+        /* ==========================================================
+           CONFIG
+           This is the ONLY block that changes between printer sizes.
+           For an 80mm printer: change --paper-width to 80mm AND
+           change the @page size rule below to 80mm auto.
+           (Chromium's @page rule does not reliably resolve custom
+           properties across all versions, so it is kept literal
+           for print-reliability. Everything else in this file reads
+           from --paper-width and adapts automatically.)
+           ========================================================== */
+
+        :root {
+            --paper-width: 58mm;
+            --paper-padding: 3mm;
+            --printable-width: calc(var(--paper-width) - (var(--paper-padding) * 2));
+
+            --font-base: 13px;
+            --font-small: 12px;
+            --font-title: 17px;
+            --font-total: 18px;
+
+            --col-item: 62%;
+            --col-qty: 12%;
+            --col-price: 26%;
+        }
+
         * {
             box-sizing: border-box;
         }
 
-        body {
+        html, body {
             margin: 0;
             padding: 0;
+        }
+
+        body {
             background: #eeeeee;
-            font-family: "Courier New", monospace;
+            font-family: "Courier New", Courier, monospace;
             color: #000;
         }
 
+        /* ==========================================================
+           RECEIPT CONTAINER
+           No min-height here on purpose: forcing a minimum height
+           is what created the "large blank white area" bug. Roll
+           paper should be exactly as tall as its content.
+           ========================================================== */
+
         .receipt {
-            width: 80mm;
-            min-height: 100mm;
+            width: var(--paper-width);
+            
+            font-weight: bold;
 
             margin: 20px auto;
 
-            padding: 4mm;
+            padding: var(--paper-padding);
 
             background: white;
 
-            font-size: 12px;
+            font-size: var(--font-base);
             line-height: 1.4;
+
+            overflow: visible;
+        }
+        .receipt,
+        .receipt * {
+            font-weight: bold;
         }
 
         .center {
             text-align: center;
         }
 
+        .right {
+            text-align: right;
+        }
+
         .restaurant-name {
-            font-size: 18px;
+            font-size: var(--font-title);
             font-weight: bold;
             margin-bottom: 3px;
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
 
         .restaurant-info {
-            font-size: 11px;
+            font-size: var(--font-small);
+            overflow-wrap: break-word;
+            font-weight: bold;
+            word-break: break-word;
         }
 
         .divider {
@@ -61,23 +113,66 @@
             margin: 8px 0;
         }
 
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
+        .section-title {
+            font-size: var(--font-small);
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
         }
 
-        .info-row span:last-child {
-            text-align: right;
+        /* ==========================================================
+           LABEL / VALUE ROWS
+           Rebuilt as a real table instead of flexbox.
+           This is the fix for clipped text ("Rahul" -> "Rahu",
+           "Offline" cut, invoice number clipped). Flex children
+           don't wrap text by default inside a fixed-width parent;
+           Chromium's print engine hard-clips the overflow instead
+           of reflowing it. A table cell wraps correctly and can
+           never silently lose characters.
+           ========================================================== */
+
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
         }
+
+        .info-table td {
+            padding: 1px 0;
+            vertical-align: top;
+            font-size: var(--font-base);
+        }
+
+        .info-table td.label {
+            width: 34%;
+            white-space: nowrap;
+        }
+
+        .info-table td.value {
+            width: 66%;
+            text-align: right;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+
+        /* ==========================================================
+           ITEMS TABLE
+           table-layout: fixed + explicit column widths that always
+           sum to 100% of --printable-width. This is what lets it
+           hold 1 item or 100 items, and long / multi-line item
+           names, without ever collapsing a column.
+           ========================================================== */
 
         .items-table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
         }
 
         .items-table th {
             text-align: left;
+            font-size: var(--font-small);
             border-bottom: 1px dashed #000;
             padding: 4px 0;
         }
@@ -85,47 +180,74 @@
         .items-table td {
             padding: 4px 0;
             vertical-align: top;
+            font-size: var(--font-base);
+
+            /* every row must survive a page boundary intact */
+            page-break-inside: avoid;
+            break-inside: avoid;
         }
 
-        .qty {
+        .items-table tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .items-table th.qty,
+        .items-table td.qty {
             text-align: center;
-            width: 12%;
+            width: var(--col-qty);
         }
 
-        .price {
+        .items-table th.price,
+        .items-table td.price {
             text-align: right;
-            width: 24%;
+            width: var(--col-price);
         }
 
-        .item-name {
-            width: 64%;
+        .items-table th.item-name,
+        .items-table td.item-name {
+            width: var(--col-item);
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
 
         .item-size {
             display: block;
-            font-size: 10px;
+            font-size: var(--font-small);
+            color: #333;
         }
 
         .total-row {
-            display: flex;
-            justify-content: space-between;
+            display: table;
+            width: 100%;
 
-            font-size: 16px;
+            font-size: var(--font-total);
             font-weight: bold;
 
             margin-top: 5px;
         }
 
+        .total-row .t-label,
+        .total-row .t-value {
+            display: table-cell;
+        }
+
+        .total-row .t-value {
+            text-align: right;
+        }
+
         .footer {
             margin-top: 12px;
             text-align: center;
-            font-size: 11px;
+            font-size: var(--font-small);
+            overflow-wrap: break-word;
+            word-break: break-word;
         }
 
         .print-button {
             display: block;
 
-            width: 80mm;
+            width: var(--paper-width);
 
             margin: 20px auto;
 
@@ -141,29 +263,44 @@
         }
 
 
-        /* THERMAL PRINTING */
+        /* ==========================================================
+           PRINT MEDIA
+           Paper width is read from --paper-width so screen and
+           print are guaranteed to agree. This alone removes the
+           two-page / blank-page bug, which was caused by the old
+           print block hardcoding 80mm while the printer is 58mm.
+           ========================================================== */
 
         @media print {
 
             @page {
-                size: 80mm auto;
+                /* Keep this literal and in sync with --paper-width above */
+                
                 margin: 0;
             }
 
-            body {
+            html, body {
+                width: var(--paper-width);
                 background: white;
             }
 
             .receipt {
-                width: 80mm;
+                width: var(--paper-width);
                 margin: 0;
-                padding: 3mm;
+                padding: var(--paper-padding);
             }
 
             .print-button {
                 display: none;
             }
 
+            /* belt-and-braces: never let anything force a break */
+            .receipt,
+            .info-table,
+            .items-table {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
         }
 
     </style>
@@ -201,82 +338,45 @@
 
     <!-- INVOICE INFORMATION -->
 
-    <div class="info-row">
+    <table class="info-table">
 
-        <span>Invoice</span>
+        <tr>
+            <td class="label">Invoice</td>
+            <td class="value">{{ invoice.invoice_number }}</td>
+        </tr>
 
-        <span>
-            {{ invoice.invoice_number }}
-        </span>
+        <tr>
+            <td class="label">Date</td>
+            <td class="value">{{ invoice.order.created_at|date:"d M Y" }}</td>
+        </tr>
 
-    </div>
+        <tr>
+            <td class="label">Time</td>
+            <td class="value">{{ invoice.order.created_at|time:"h:i A" }}</td>
+        </tr>
 
+        {% if invoice.customer.table_number %}
+        <tr>
+            <td class="label">Table</td>
+            <td class="value">{{ invoice.customer.table_number }}</td>
+        </tr>
+        {% endif %}
 
-    <div class="info-row">
+        {% if invoice.customer.car_number %}
+        <tr>
+            <td class="label">Car</td>
+            <td class="value">{{ invoice.customer.car_number }}</td>
+        </tr>
+        {% endif %}
 
-        <span>Date</span>
+        {% if invoice.order.staff %}
+        <tr>
+            <td class="label">Staff</td>
+            <td class="value">{{ invoice.order.staff }}</td>
+        </tr>
+        {% endif %}
 
-        <span>
-            {{ invoice.order.created_at|date:"d M Y" }}
-        </span>
-
-    </div>
-
-
-    <div class="info-row">
-
-        <span>Time</span>
-
-        <span>
-            {{ invoice.order.created_at|time:"h:i A" }}
-        </span>
-
-    </div>
-
-
-    {% if invoice.customer.table_number %}
-
-        <div class="info-row">
-
-            <span>Table</span>
-
-            <span>
-                {{ invoice.customer.table_number }}
-            </span>
-
-        </div>
-
-    {% endif %}
-
-
-    {% if invoice.customer.car_number %}
-
-        <div class="info-row">
-
-            <span>Car</span>
-
-            <span>
-                {{ invoice.customer.car_number }}
-            </span>
-
-        </div>
-
-    {% endif %}
-
-
-    {% if invoice.order.staff %}
-
-        <div class="info-row">
-
-            <span>Staff</span>
-
-            <span>
-                {{ invoice.order.staff }}
-            </span>
-
-        </div>
-
-    {% endif %}
+    </table>
 
 
     <div class="divider"></div>
@@ -284,31 +384,32 @@
 
     <!-- CUSTOMER -->
 
-    {% if invoice.customer.name %}
+    {% if invoice.customer.name or invoice.customer.phone %}
 
-        <div>
-            Customer:
-            {{ invoice.customer.name }}
-        </div>
+        <table class="info-table">
+
+            {% if invoice.customer.name %}
+            <tr>
+                <td class="label">Customer</td>
+                <td class="value">{{ invoice.customer.name }}</td>
+            </tr>
+            {% endif %}
+
+            {% if invoice.customer.phone %}
+            <tr>
+                <td class="label">Phone</td>
+                <td class="value">{{ invoice.customer.phone }}</td>
+            </tr>
+            {% endif %}
+
+        </table>
+
+        <div class="divider"></div>
 
     {% endif %}
-
-
-    {% if invoice.customer.phone %}
-
-        <div>
-            Phone:
-            {{ invoice.customer.phone }}
-        </div>
-
-    {% endif %}
-
-
-    <div class="divider"></div>
 
 
     <!-- ITEMS -->
-
 
     <table class="items-table">
 
@@ -346,7 +447,7 @@
                         {% if item.Size %}
                             <span class="item-size">
                                 {{ item.Size }}
-                                @ ₹{{ item.unit_price }}
+                                @ &#8377;{{ item.unit_price }}
                             </span>
                         {% endif %}
 
@@ -359,7 +460,7 @@
 
 
                     <td class="price">
-                        ₹{{ item.subtotal }}
+                        &#8377;{{ item.subtotal }}
                     </td>
 
                 </tr>
@@ -386,17 +487,9 @@
 
     <!-- TOTAL -->
 
-
     <div class="total-row">
-
-        <span>
-            TOTAL
-        </span>
-
-        <span>
-            ₹{{ invoice.grand_total }}
-        </span>
-
+        <span class="t-label">TOTAL</span>
+        <span class="t-value">&#8377;{{ invoice.grand_total }}</span>
     </div>
 
 
@@ -405,27 +498,19 @@
 
     <!-- PAYMENT -->
 
+    <table class="info-table">
 
-    <div class="info-row">
+        <tr>
+            <td class="label">Payment</td>
+            <td class="value">{{ invoice.order.payment_type }}</td>
+        </tr>
 
-        <span>Payment</span>
+        <tr>
+            <td class="label">Status</td>
+            <td class="value">{{ invoice.order.payment_status }}</td>
+        </tr>
 
-        <span>
-            {{ invoice.order.payment_type }}
-        </span>
-
-    </div>
-
-
-    <div class="info-row">
-
-        <span>Status</span>
-
-        <span>
-            {{ invoice.order.payment_status }}
-        </span>
-
-    </div>
+    </table>
 
 
     <div class="divider"></div>
@@ -433,8 +518,7 @@
 
     <!-- FOOTER -->
 
-
-    <div class="footer">
+    <div class="footer" id = "receipt-end">
 
         Thank you for your order!
 
@@ -450,6 +534,11 @@
 
 
 </div>
+
+
+<button class="print-button" onclick="window.print()">
+    Print Receipt
+</button>
 
 
 </body>

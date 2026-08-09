@@ -227,65 +227,55 @@
   gap: 10px;
 }
 
-/* ---------- Receipt (58mm thermal look) ---------- */
+/* ---------- Invoice (backend-generated PDF) ----------
+   The invoice modal no longer renders any order data itself - the
+   backend is the single source of truth for the invoice (data, layout,
+   styling, PDF conversion). This modal only displays the PDF the
+   backend returns (js/dashboard.js -> showReceipt()) and, on Print,
+   sends that same PDF to the browser's print dialog unmodified
+   (js/dashboard.js -> printReceipt()). */
 .receipt-modal-box {
-  max-width: 380px;
+  max-width: 480px;
 }
 
-.receipt-58mm {
+.receipt-pdf-viewer {
+  position: relative;
   width: 100%;
-  max-width: 240px;
-  margin: 0 auto;
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  color: #111;
-  padding: 12px 0;
+  min-height: 420px;
 }
 
-.receipt-58mm .receipt-center {
+.receipt-pdf-frame {
+  width: 100%;
+  height: 420px;
+  border: 0;
+  display: block;
+}
+
+.receipt-pdf-status {
   text-align: center;
+  padding: 48px 12px;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
 }
 
-.receipt-58mm hr {
-  border: none;
-  border-top: 1px dashed #999;
-  margin: 8px 0;
+.receipt-pdf-status.receipt-pdf-error {
+  color: var(--color-danger, #d64545);
 }
 
-.receipt-58mm .receipt-row {
-  display: flex;
-  justify-content: space-between;
-  margin: 2px 0;
-}
+/* ---------- Print styles ----------
+   Invoices no longer print from this document at all - the Print
+   button in the receipt modal (js/dashboard.js -> printReceipt())
+   fetches the backend-generated PDF, loads it into a completely
+   isolated hidden iframe, and prints THAT, so the dashboard's layout
+   and this stylesheet never enter the print pipeline in the first
+   place.
 
-.receipt-58mm .receipt-title {
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.receipt-58mm .receipt-total-row {
-  font-weight: 700;
-  font-size: 13px;
-}
-
-/* ---------- Print styles ---------- */
+   This rule is just a safety net in case someone hits Ctrl+P on the
+   dashboard directly instead of using the Print button: rather than
+   depending on visibility tricks, it simply declines to print the
+   dashboard chrome at all. */
 @media print {
-  body * {
-    visibility: hidden;
-  }
-
-  #receipt-content, #receipt-content * {
-    visibility: visible;
-  }
-
-  #receipt-content {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 58mm;
-  }
-
-  .no-print {
+  body {
     display: none !important;
   }
 }
