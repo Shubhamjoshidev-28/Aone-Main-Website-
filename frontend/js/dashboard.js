@@ -48,8 +48,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const deliveredSection = document.getElementById('delivered-orders-section');
 
   /* ---------------- Helpers ---------------- */
+  /** An order only counts as truly Delivered once BOTH the status has
+      been set to 'Delivered' AND the bill has actually been printed.
+      Status alone is not enough - Status can be 'Delivered' (set either
+      by the Edit Order form or, in the past, as a side effect of the
+      print flow) while Bill_Printed is still false, and that order has
+      not finished the billing/printing workflow yet. */
+  function isDelivered(order) {
+    return order.Status === 'Delivered' && order.Bill_Printed === true;
+  }
+
   function isLive(order) {
-    return order.Status !== 'Delivered';
+    return !isDelivered(order);
   }
 
   function statusBadgeClass(status) {
@@ -727,8 +737,11 @@ document.addEventListener('DOMContentLoaded', () => {
             API.editOrder(orderId, { Status: 'Delivered', Bill_Printed: true })
          -> the local `orders` array is updated from that response and
             render() is called - no page refresh needed
-         -> the order now has Status 'Delivered', so isLive() returns
-            false for it and it moves from Live Orders to Delivered
+         -> the order now has Status 'Delivered' AND Bill_Printed true,
+            so isDelivered() returns true (isLive() returns false) and
+            it moves from Live Orders to Delivered. An order with only
+            Status 'Delivered' but Bill_Printed still false stays in
+            Live Orders - see isDelivered()/isLive() above.
 
        If the PDF fails to load, or the print dialog fails to open, the
        order's Status and Bill_Printed are left untouched, the order
@@ -871,7 +884,14 @@ document.addEventListener('DOMContentLoaded', () => {
       setPrintButtonBusy(false);
 
       const order = orders.find((o) => o.id === orderId);
-      const alreadyDelivered = order && order.Status === 'Delivered';
+      /* Use the full isDelivered() rule here too, not just Status. An
+         order with Status 'Delivered' but Bill_Printed still false (e.g.
+         set manually via Edit Order) is NOT "already delivered" - this
+         print is the one that completes the workflow, so it must still
+         call markOrderDelivered() below. Only skip the update for an
+         order that was genuinely already Status='Delivered' AND
+         Bill_Printed=true before this print (a true reprint). */
+      const alreadyDelivered = order && isDelivered(order);
 
       closeModal('receipt-modal');
 
