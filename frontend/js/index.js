@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const menuEmpty = document.getElementById('menu-empty');
   const categoryTabs = document.getElementById('category-tabs');
   const searchInput = document.getElementById('search-input');
+  const sizeFilter = document.getElementById('new-order-size-filter');
 
   const cartDrawer = document.getElementById('cart-drawer');
   const cartOverlay = document.getElementById('cart-overlay');
@@ -71,11 +72,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function normalizeSize(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
   function getFilteredMenu() {
     return menuItems.filter((item) => {
       const matchesCategory = activeCategory === 'All' || item.Item_Category === activeCategory;
-      const matchesSearch = item.Item_Name.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesCategory && matchesSearch;
+      const matchesSize = normalizeSize(item.Item_Size) === normalizeSize(activeSize);
+      const matchesSearch = String(item.Item_Name || '').toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesCategory && matchesSize && matchesSearch;
     });
   }
 
@@ -90,9 +96,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const card = document.createElement('div');
       card.className = 'menu-card card-hover';
+      const sizeLabel = String(item.Item_Size || '').trim().toUpperCase();
       card.innerHTML = `
         <div class="menu-card-body">
-          <span class="menu-card-category">${item.Item_Category}</span>
+          <div class="menu-card-meta">
+            <span class="menu-card-category">${item.Item_Category}</span>
+            <span class="menu-size-tag">${sizeLabel}</span>
+          </div>
           <h3 class="menu-card-name">${item.Item_Name}</h3>
           <span class="menu-card-price">₹${Number(item.Item_Price).toFixed(2)}</span>
         </div>
@@ -236,6 +246,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 200);
   });
 
+  /* ---------------- Size filter ---------------- */
+  if (sizeFilter) {
+    sizeFilter.addEventListener('click', (e) => {
+      const button = e.target.closest('.size-filter-btn');
+      if (!button) return;
+
+      sizeFilter.querySelectorAll('.size-filter-btn').forEach((btn) => btn.classList.remove('active'));
+      button.classList.add('active');
+      activeSize = button.dataset.size;
+      renderMenu();
+    });
+  }
+
   /* ---------------- Payment toggle ---------------- */
   document.querySelectorAll('.payment-option').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -306,42 +329,4 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   loadMenu();
-});
-
-/* ----------menu items seperator-------------*/
-function getFilteredMenu() {
-    return menuItems.filter((item) => {
-        const matchesCategory =
-            activeCategory === 'All' ||
-            item.Item_Category === activeCategory;
-
-        const matchesSize =
-            String(item.Item_Size).toLowerCase() ===
-            activeSize.toLowerCase();
-
-        const matchesSearch =
-            item.Item_Name.toLowerCase().includes(
-                searchTerm.toLowerCase()
-            );
-
-        return matchesCategory && matchesSize && matchesSearch;
-    });
-}
-
-const sizeFilter = document.getElementById('new-order-size-filter');
-
-sizeFilter.addEventListener('click', (e) => {
-    const button = e.target.closest('.size-filter-btn');
-
-    if (!button) return;
-
-    sizeFilter
-        .querySelectorAll('.size-filter-btn')
-        .forEach(btn => btn.classList.remove('active'));
-
-    button.classList.add('active');
-
-    activeSize = button.dataset.size;
-
-    renderMenu();
 });
