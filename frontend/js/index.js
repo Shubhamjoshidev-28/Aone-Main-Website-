@@ -90,10 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const card = document.createElement('div');
       card.className = 'menu-card card-hover';
       card.innerHTML = `
-        <div class="menu-card-image">
-          <i class="fa-solid fa-utensils"></i>
-          <span class="size-tag">${item.Item_Size}</span>
-        </div>
         <div class="menu-card-body">
           <span class="menu-card-category">${item.Item_Category}</span>
           <h3 class="menu-card-name">${item.Item_Name}</h3>
