@@ -143,6 +143,13 @@
           </div>
 
           <div class="form-group">
+            <label class="form-label" for="new-staff-assigned">Staff Assigned</label>
+            <select class="form-select" id="new-staff-assigned">
+              <option value="">Select Staff</option>
+            </select>
+          </div>
+
+          <div class="form-group">
             <label class="form-label">Order Type</label>
             <div class="order-type-toggle">
               <button type="button" class="payment-option active" data-order-type="Dine In"><i class="fa-solid fa-utensils"></i> Dine In</button>
@@ -316,6 +323,18 @@
               <select class="form-select" id="edit-payment-type">
                 <option value="Offline">Offline (Cash)</option>
                 <option value="Online">Online</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="edit-phone">Phone Number</label>
+              <input class="form-input" type="tel" id="edit-phone" placeholder="Phone number" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="edit-staff-assigned">Staff Assigned</label>
+              <select class="form-select" id="edit-staff-assigned">
+                <option value="">Unassigned</option>
               </select>
             </div>
           </div>

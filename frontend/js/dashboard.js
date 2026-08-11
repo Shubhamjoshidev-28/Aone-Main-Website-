@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let editOrderCart = {};
   let editOrderId = null;
 
+  let staffList = [];
+
   let selectorCart = {};
 
   const liveGrid = document.getElementById('live-orders-grid');
@@ -71,6 +73,52 @@ document.addEventListener('DOMContentLoaded', () => {
     if (menuItems.length === 0) {
       await loadMenu();
     }
+  }
+
+  /* Staff list is used to populate the "Staff Assigned" dropdown in the
+     Edit Order modal. Uses the existing staff list API (same one used by
+     staff.js) — no new endpoint is introduced. */
+  async function loadStaff() {
+    try {
+      const response = await API.getStaffList();
+      staffList = response.staff || [];
+      populateStaffDropdown();
+    } catch (err) {
+    }
+  }
+
+  async function ensureStaffLoaded() {
+    if (staffList.length === 0) {
+      await loadStaff();
+    }
+  }
+
+  function populateStaffDropdown() {
+    const select = document.getElementById('edit-staff-assigned');
+    if (!select) return;
+    const currentValue = select.value;
+    select.innerHTML = '<option value="">Unassigned</option>';
+    staffList.forEach((s) => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = s.Name || s.username || `Staff #${s.id}`;
+      select.appendChild(opt);
+    });
+    if (currentValue) select.value = currentValue;
+  }
+
+  /* Same staffList / staff API used above, just populating the New Order
+     modal's own dropdown ("Select Staff" default instead of "Unassigned"). */
+  function populateNewOrderStaffDropdown() {
+    const select = document.getElementById('new-staff-assigned');
+    if (!select) return;
+    select.innerHTML = '<option value="">Select Staff</option>';
+    staffList.forEach((s) => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = s.Name || s.username || `Staff #${s.id}`;
+      select.appendChild(opt);
+    });
   }
 
   function getMenuItem(itemId) {
@@ -201,9 +249,29 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => closeModal(btn.dataset.closeModal));
   });
 
-  function viewOrder(orderId) {
+  /* Resolves a display name for the order's assigned staff member.
+     Handles all response shapes the backend may return for Staff_Assigned:
+     an expanded object ({id, Staff_Name}), a plain staff ID (number),
+     or null/undefined when nobody is assigned. Falls back to the same
+     staffList already fetched for the New Order / Edit Order dropdowns. */
+  function getStaffAssignedName(staffAssigned) {
+    if (staffAssigned === null || staffAssigned === undefined || staffAssigned === '') {
+      return '-';
+    }
+    if (typeof staffAssigned === 'object') {
+      return staffAssigned.Staff_Name || staffAssigned.Name || staffAssigned.username || '-';
+    }
+    const match = staffList.find((s) => s.id === staffAssigned || s.id === Number(staffAssigned));
+    return match ? (match.Name || match.username || '-') : '-';
+  }
+
+  async function viewOrder(orderId) {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
+
+    /* Needed to resolve a staff name when Staff_Assigned comes back as a
+       plain ID rather than an expanded object. */
+    await ensureStaffLoaded();
 
     const items = order.order_items || [];
     const itemsRows = items.map((it) => `
@@ -223,6 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="order-meta-item"><div class="order-meta-label">Car No.</div><div>${order.Car_No || '-'}</div></div>
         <div class="order-meta-item"><div class="order-meta-label">Status</div><div><span class="badge ${statusBadgeClass(order.Status)}">${order.Status}</span></div></div>
         <div class="order-meta-item"><div class="order-meta-label">Payment</div><div><span class="badge ${paymentBadgeClass(order.Payment_Status)}">${order.Payment_Status || 'Pending'}</span></div></div>
+        <div class="order-meta-item"><div class="order-meta-label">Staff Assigned</div><div>${getStaffAssignedName(order.Staff_Assigned)}</div></div>
       </div>
       <div class="table-wrap">
         <table>
@@ -237,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
     openModal('view-order-modal');
   }
 
-  function editOrderModal(orderId) {
+  async function editOrderModal(orderId) {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
 
@@ -246,9 +315,16 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('edit-cust-name').value = order.Cust_Name || '';
     document.getElementById('edit-table-no').value = order.Table_No || '';
     document.getElementById('edit-car-no').value = order.Car_No || '';
+    document.getElementById('edit-phone').value = order.Phone || '';
     document.getElementById('edit-payment-type').value = order.Payment_Type || 'Offline';
     document.getElementById('edit-status').value = order.Status || 'Preparing';
     document.getElementById('edit-payment-status').value = order.Payment_Status || 'Pending';
+
+    /* Staff dropdown must be populated before we can select the order's
+       currently assigned staff member. */
+    await ensureStaffLoaded();
+    populateStaffDropdown();
+    document.getElementById('edit-staff-assigned').value = order.Staff_Assigned || '';
 
     editOrderCart = {};
     (order.order_items || []).forEach((it, index) => {
@@ -345,10 +421,14 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     const orderId = document.getElementById('edit-order-id').value;
 
+    const staffAssignedValue = document.getElementById('edit-staff-assigned').value;
+
     const payload = {
       Cust_Name: document.getElementById('edit-cust-name').value.trim(),
       Table_No: document.getElementById('edit-table-no').value ? Number(document.getElementById('edit-table-no').value) : null,
       Car_No: document.getElementById('edit-car-no').value.trim(),
+      Phone: document.getElementById('edit-phone').value.trim() || null,
+      Staff_Assigned: staffAssignedValue ? Number(staffAssignedValue) : null,
       Payment_Type: document.getElementById('edit-payment-type').value,
       Status: document.getElementById('edit-status').value,
       Payment_Status: document.getElementById('edit-payment-status').value,
@@ -523,6 +603,8 @@ document.addEventListener('DOMContentLoaded', () => {
       b.classList.toggle('active', b.dataset.orderType === 'Dine In');
     });
     await ensureMenuLoaded();
+    await ensureStaffLoaded();
+    populateNewOrderStaffDropdown();
     newOrderMenuPicker.refresh();
     updateNewOrderTotals();
     openModal('new-order-modal');
@@ -555,6 +637,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const tableNo = document.getElementById('new-table-no').value;
     const carNo = document.getElementById('new-car-no').value.trim();
+    const staffAssignedValue = document.getElementById('new-staff-assigned').value;
     const total = Object.values(newOrderCart).reduce((sum, e2) => sum + Number(e2.item.Item_Price) * e2.qty, 0);
 
     const payload = {
@@ -562,6 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
       Phone: document.getElementById('new-phone').value.trim() || null,
       Table_No: tableNo ? Number(tableNo) : null,
       Car_No: carNo || null,
+      Staff_Assigned: staffAssignedValue ? Number(staffAssignedValue) : null,
       Source: 'Owner',
       Status: document.getElementById('new-order-status').value,
       Payment_Status: document.getElementById('new-payment-status').value,
