@@ -1,32 +1,43 @@
 from playwright.sync_api import sync_playwright
 
 
-def html_to_pdf(html: str) -> bytes:
+_playwright = None
+_browser = None
 
-    with sync_playwright() as p:
 
-        browser = p.chromium.launch(
+def _get_browser():
+    global _playwright, _browser
+
+    if _browser is None:
+        _playwright = sync_playwright().start()
+
+        _browser = _playwright.chromium.launch(
             headless=True
         )
 
-        page = browser.new_page(
-            viewport={
-                "width": 219,
-                "height": 1000,
-            },
-            device_scale_factor=1,
-        )
+    return _browser
 
+
+def html_to_pdf(html: str) -> bytes:
+
+    browser = _get_browser()
+
+    page = browser.new_page(
+        viewport={
+            "width": 219,
+            "height": 1000,
+        },
+        device_scale_factor=1,
+    )
+
+    try:
         page.set_content(
             html,
             wait_until="networkidle",
         )
 
-        # Render and measure the receipt in print mode so screen-only
-        # spacing cannot leak into the exported PDF.
         page.emulate_media(media="print")
 
-        # Make sure fonts have finished loading.
         page.evaluate(
             """
             async () => {
@@ -37,22 +48,12 @@ def html_to_pdf(html: str) -> bytes:
             """
         )
 
-        # -------------------------------------------------
-        # FIND RECEIPT END
-        # -------------------------------------------------
-
         receipt_end = page.locator("#receipt-end")
 
         if receipt_end.count() == 0:
-            browser.close()
-
             raise ValueError(
                 "Missing #receipt-end in invoice.html"
             )
-
-        # -------------------------------------------------
-        # MEASURE RECEIPT
-        # -------------------------------------------------
 
         dimensions = receipt_end.evaluate(
             """
@@ -78,12 +79,10 @@ def html_to_pdf(html: str) -> bytes:
         receipt_top = dimensions["receiptTop"]
         end_bottom = dimensions["endBottom"]
 
-        # Actual receipt height in CSS pixels.
         content_height_px = (
             end_bottom - receipt_top
         )
 
-        # Small bottom breathing room.
         bottom_padding_px = 12
 
         total_height_px = (
@@ -91,15 +90,10 @@ def html_to_pdf(html: str) -> bytes:
             bottom_padding_px
         )
 
-        # -------------------------------------------------
-        # PX → MM
-        # -------------------------------------------------
-
         height_mm = (
             total_height_px * 25.4 / 96
         )
 
-        # Safety limits.
         height_mm = max(height_mm, 40)
         height_mm = min(height_mm, 1000)
 
@@ -113,10 +107,6 @@ def html_to_pdf(html: str) -> bytes:
             f"{height_mm:.2f}mm"
         )
 
-        # -------------------------------------------------
-        # GENERATE PDF
-        # -------------------------------------------------
-
         pdf_bytes = page.pdf(
             width="58mm",
             height=f"{height_mm:.2f}mm",
@@ -129,11 +119,10 @@ def html_to_pdf(html: str) -> bytes:
             },
 
             print_background=True,
-
-            # VERY IMPORTANT
             prefer_css_page_size=False,
         )
 
-        browser.close()
-
         return pdf_bytes
+
+    finally:
+        page.close()
