@@ -19,6 +19,7 @@ class CreateOrderSerializer (
         fields = [
             'id',
             'Cust_Name',
+            'Phone',
             'Table_No',
             'Car_No',
             'Staff_Assigned',

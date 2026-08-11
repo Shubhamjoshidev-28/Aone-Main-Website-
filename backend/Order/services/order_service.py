@@ -48,6 +48,7 @@ class OrderService:
 
         order = Order.objects.create(
             Cust_Name=validated_data.get("Cust_Name"),
+            Phone=validated_data.get("Phone"),
             Table_No=validated_data.get("Table_No"),
             Car_No=validated_data.get("Car_No"),
             Staff_Assigned=validated_data.get("Staff_Assigned"),
@@ -93,6 +94,11 @@ class OrderService:
         order.Cust_Name = validated_data.get(
             "Cust_Name",
             order.Cust_Name
+        )
+
+        order.Phone = validated_data.get(
+            "Phone",
+            order.Phone
         )
     
         order.Table_No = validated_data.get(

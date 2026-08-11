@@ -1,17 +1,3 @@
-/* ============================================================
-   DASHBOARD.JS
-   Owner Orders page: live orders, delivered orders, view/edit/
-   delete, invoice generation (moves order to Delivered without
-   a page refresh) and invoice printing.
-
-   The backend is the single source of truth for the invoice: it
-   builds the invoice data, renders invoice.html, applies the
-   invoice CSS and converts it to a PDF (API.fetchInvoicePDF).
-   The frontend never generates, reconstructs, styles or formats
-   the invoice itself - it only requests the PDF, displays it, and
-   prints it exactly as received.
-   ============================================================ */
-
 document.addEventListener('DOMContentLoaded', () => {
   Auth.requireAuth();
   Shell.init();
@@ -20,20 +6,14 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeTab = 'live';
   let pendingDeleteId = null;
 
-  /* Menu cache, shared by the New Order picker, the Edit Order "Add Item"
-     selector, and the item-name lookups used in View Order + the receipt. */
   let menuItems = [];
 
-  /* Cart used while the New Order modal is open: { menuItemId: { item, qty } } */
   let newOrderCart = {};
   let newOrderType = 'Dine In';
 
-  /* Cart used while the Edit Order modal is open, seeded from the order's
-     existing order_items and mutated by qty +/-, delete, and Add Item. */
   let editOrderCart = {};
   let editOrderId = null;
 
-  /* Scratch cart for the shared Menu Selector modal (Edit Order -> Add Item). */
   let selectorCart = {};
 
   const liveGrid = document.getElementById('live-orders-grid');
@@ -47,13 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const liveSection = document.getElementById('live-orders-section');
   const deliveredSection = document.getElementById('delivered-orders-section');
 
-  /* ---------------- Helpers ---------------- */
-  /** An order only counts as truly Delivered once BOTH the status has
-      been set to 'Delivered' AND the bill has actually been printed.
-      Status alone is not enough - Status can be 'Delivered' (set either
-      by the Edit Order form or, in the past, as a side effect of the
-      print flow) while Bill_Printed is still false, and that order has
-      not finished the billing/printing workflow yet. */
   function isDelivered(order) {
     return order.Status === 'Delivered' && order.Bill_Printed === true;
   }
@@ -86,22 +59,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return `₹${Number(value || 0).toFixed(2)}`;
   }
 
-  /* ---------------- Menu (shared cache) ---------------- */
   async function loadMenu() {
     try {
       const response = await API.getMenu();
       menuItems = response.menu_items || response.menu || [];
     } catch (err) {
-      /* toast already shown */
     }
   }
 
-  /** Both the New Order picker and the Menu Selector (Edit Order -> Add Item)
-      call refresh() the moment their modal opens. loadMenu() is fired once
-      at startup and not awaited there, so if a modal is opened before that
-      first request resolves, menuItems would still be empty and the grid
-      would render with nothing in it. Guard against that race by loading
-      the menu on demand whenever it's still empty. */
   async function ensureMenuLoaded() {
     if (menuItems.length === 0) {
       await loadMenu();
@@ -112,22 +77,17 @@ document.addEventListener('DOMContentLoaded', () => {
     return menuItems.find((m) => m.id === itemId);
   }
 
-  /** Real item name for an order_item row, falling back gracefully if the
-      menu item was since deleted (still shows something useful instead of
-      the old "Item #<id>" placeholder). */
   function orderItemName(orderItem) {
     const menuItem = getMenuItem(orderItem.item);
     return menuItem ? menuItem.Item_Name : `Item #${orderItem.item}`;
   }
 
-  /* ---------------- Load orders ---------------- */
   async function loadOrders() {
     try {
       const response = await API.getOrders();
       orders = response.order || [];
       render();
     } catch (err) {
-      /* toast already shown */
     }
   }
 
@@ -209,7 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* ---------------- Tabs ---------------- */
   document.querySelectorAll('.order-tab').forEach((tab) => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.order-tab').forEach((t) => t.classList.remove('active'));
@@ -222,13 +181,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('refresh-orders-btn').addEventListener('click', loadOrders);
 
-  /* ---------------- Modal helpers ----------------
-     menuSelectorParentModalId lets openMenuSelector() (below) register a
-     modal that should be hidden while the Menu Selector is open and
-     automatically restored the moment the Menu Selector closes -- whether
-     that's via "Add Selected Items" or Cancel/X. Centralizing the restore
-     in closeModal() means both close paths behave identically without
-     duplicating logic. */
   let menuSelectorParentModalId = null;
 
   function openModal(id) {
@@ -241,9 +193,6 @@ document.addEventListener('DOMContentLoaded', () => {
       menuSelectorParentModalId = null;
       openModal(parentId);
     }
-    /* The receipt modal's preview iframe is loaded from a Blob URL
-       (see showReceipt()) - release it as soon as the modal closes so
-       we don't hold onto the PDF data URL longer than needed. */
     if (id === 'receipt-modal') {
       revokeReceiptPreview();
     }
@@ -252,7 +201,6 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => closeModal(btn.dataset.closeModal));
   });
 
-  /* ---------------- View order ---------------- */
   function viewOrder(orderId) {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
@@ -289,7 +237,6 @@ document.addEventListener('DOMContentLoaded', () => {
     openModal('view-order-modal');
   }
 
-  /* ---------------- Edit order ---------------- */
   function editOrderModal(orderId) {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return;
@@ -303,9 +250,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('edit-status').value = order.Status || 'Preparing';
     document.getElementById('edit-payment-status').value = order.Payment_Status || 'Pending';
 
-    /* Seed the editable items cart from the order's current order_items.
-       Each existing line keeps its own id/unit_price/qty so "Save Changes"
-       can send back exactly what's on screen. */
     editOrderCart = {};
     (order.order_items || []).forEach((it, index) => {
       const menuItem = getMenuItem(it.item);
@@ -378,16 +322,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /* "Add Item" reuses the same Menu Selector modal/component as Create Order.
-     Passing 'edit-order-modal' as the parent makes the Menu Selector behave
-     like a child dialog: Edit Order is hidden while it's open and reappears
-     the instant the Menu Selector closes (Add Selected Items, Cancel, or X),
-     so only one modal overlay is ever visible at a time. */
   document.getElementById('edit-add-item-btn').addEventListener('click', () => {
     openMenuSelector((selectedEntries) => {
       selectedEntries.forEach(({ item, qty }) => {
-        /* If this menu item is already on the order, bump its quantity
-           instead of adding a duplicate line. */
         const existingKey = Object.keys(editOrderCart).find((k) => editOrderCart[k].itemId === item.id);
         if (existingKey) {
           editOrderCart[existingKey].qty += qty;
@@ -415,9 +352,6 @@ document.addEventListener('DOMContentLoaded', () => {
       Payment_Type: document.getElementById('edit-payment-type').value,
       Status: document.getElementById('edit-status').value,
       Payment_Status: document.getElementById('edit-payment-status').value,
-      /* The update endpoint replaces every order item whenever `items` is
-         present (see Order/services/order_service.py -> update_order), so
-         we always send the full, current set of items from the modal. */
       items: Object.values(editOrderCart).map((entry) => ({
         item: entry.itemId,
         unit_price: entry.unit_price,
@@ -431,16 +365,9 @@ document.addEventListener('DOMContentLoaded', () => {
       closeModal('edit-order-modal');
       await loadOrders();
     } catch (err) {
-      /* toast already shown */
     }
   });
 
-  /* ---------------- Shared menu picker ----------------
-     Renders a searchable/filterable grid of available menu items with a
-     qty stepper on each card, bound to whichever cart object is passed in.
-     Used by both the New Order modal's inline menu and the Menu Selector
-     modal opened from Edit Order -> Add Item, so the picking experience
-     (and its markup/CSS) only needs to exist once. */
   function clearCart(cartObj) {
     Object.keys(cartObj).forEach((key) => delete cartObj[key]);
   }
@@ -538,9 +465,6 @@ document.addEventListener('DOMContentLoaded', () => {
       render();
     });
 
-    /* Segmented Half / Full size filter, only wired up when this picker
-       instance was given a sizeFilterId (both New Order and the Menu
-       Selector pass one; any future picker can opt out). */
     function setSizeFilter(value) {
       sizeFilter = value;
       sizeButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.size === value));
@@ -552,8 +476,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     return {
-      /** Rebuilds category options + resets filters, then renders. Call
-          every time the modal that owns this picker is (re)opened. */
       refresh() {
         buildCategoryOptions();
         searchTerm = '';
@@ -587,7 +509,6 @@ document.addEventListener('DOMContentLoaded', () => {
     cart: selectorCart
   });
 
-  /* ---------------- New Order ---------------- */
   function updateNewOrderTotals() {
     const total = Object.values(newOrderCart).reduce((sum, e) => sum + Number(e.item.Item_Price) * e.qty, 0);
     document.getElementById('new-order-subtotal').textContent = formatMoney(total);
@@ -614,10 +535,6 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.order-type-toggle .payment-option').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       newOrderType = btn.dataset.orderType;
-      /* NOTE: the Order model has no Order_Type field (see Order/models/order.py),
-         so this selection currently only decides which of Table No. / Car No.
-         make sense to fill in on this screen — it isn't persisted on its own.
-         TODO: once the backend adds an Order_Type field, send it here. */
     });
   });
 
@@ -664,11 +581,9 @@ document.addEventListener('DOMContentLoaded', () => {
       closeModal('new-order-modal');
       await loadOrders();
     } catch (err) {
-      /* toast already shown */
     }
   });
 
-  /* ---------------- Menu Selector modal (Edit Order -> Add Item) ---------------- */
   let menuSelectorConfirmCallback = null;
 
   async function openMenuSelector(onConfirm, parentModalId = null) {
@@ -691,7 +606,6 @@ document.addEventListener('DOMContentLoaded', () => {
     closeModal('menu-selector-modal');
   });
 
-  /* ---------------- Delete order ---------------- */
   function confirmDelete(orderId) {
     pendingDeleteId = orderId;
     document.getElementById('delete-order-id').textContent = `#${orderId}`;
@@ -708,54 +622,8 @@ document.addEventListener('DOMContentLoaded', () => {
       pendingDeleteId = null;
       render();
     } catch (err) {
-      /* toast already shown */
     }
   });
-
-  /* ---------------- Invoice / printing workflow ----------------
-     The backend remains the single source of truth for the invoice: it
-     builds the invoice data, renders invoice.html, applies the invoice
-     CSS and converts the result to a PDF (API.fetchInvoicePDF -> GET
-     /order/print_invoice/<id>/, returned as application/pdf). The
-     frontend never builds invoice markup, never duplicates invoice CSS,
-     and never inserts order data (customer, items, totals, etc.) itself
-     - all of that lives in the PDF returned by the backend.
-
-     Order lifecycle:
-       Live order
-         -> user clicks the print/invoice icon on the order
-         -> openInvoiceForPrinting() opens the EXISTING receipt modal
-            (no new browser window, no about:blank) and loads the
-            backend PDF into the on-screen preview iframe
-         -> user reviews the invoice inside the website, then clicks
-            "Print" inside the modal
-         -> handlePrintClick() calls print() on that SAME iframe - the
-            one already showing the invoice - triggering the browser's
-            native print dialog
-         -> ONLY once the browser reports the print dialog has closed
-            (see the 'afterprint' note below) do we call
-            API.editOrder(orderId, { Status: 'Delivered', Bill_Printed: true })
-         -> the local `orders` array is updated from that response and
-            render() is called - no page refresh needed
-         -> the order now has Status 'Delivered' AND Bill_Printed true,
-            so isDelivered() returns true (isLive() returns false) and
-            it moves from Live Orders to Delivered. An order with only
-            Status 'Delivered' but Bill_Printed still false stays in
-            Live Orders - see isDelivered()/isLive() above.
-
-       If the PDF fails to load, or the print dialog fails to open, the
-       order's Status and Bill_Printed are left untouched, the order
-       stays in Live Orders, and the user can retry.
-
-     Browser limitation - please read before relying on this: no web API
-     lets a normal browser confirm that a physical printer actually
-     produced paper. 'afterprint' only tells us the browser's print
-     dialog was closed - it fires the same way whether the user clicked
-     "Print" or "Cancel" in that dialog, and it says nothing about the
-     thermal printer itself. It is the strongest signal a normal browser
-     exposes, so it is what this file uses, but it should be read as
-     "the print dialog was dismissed", not "the receipt was physically
-     printed". */
 
   let receiptOrderId = null;
   let receiptPreviewUrl = null;
@@ -764,8 +632,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const printReceiptBtn = document.getElementById('print-receipt-btn');
   const printReceiptBtnDefaultLabel = printReceiptBtn ? printReceiptBtn.innerHTML : '';
 
-  /** Revokes the blob URL currently loaded in the on-screen preview
-      iframe (if any) so we don't leak memory across repeated opens. */
   function revokeReceiptPreview() {
     if (receiptPreviewUrl) {
       URL.revokeObjectURL(receiptPreviewUrl);
@@ -773,9 +639,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** Toggles the Print button's busy state: disabled + a spinner label
-      while a print is in flight, so rapid/duplicate clicks can't start a
-      second print (or a second Status update) while one is running. */
   function setPrintButtonBusy(busy) {
     if (!printReceiptBtn) return;
     isPrinting = busy;
@@ -785,13 +648,6 @@ document.addEventListener('DOMContentLoaded', () => {
       : printReceiptBtnDefaultLabel;
   }
 
-  /** Opens the receipt modal for orderId and loads the backend-generated
-      invoice PDF straight into it for preview. Nothing about the order
-      (customer, items, totals, invoice number...) is read or rendered by
-      this function - the iframe simply displays the PDF the backend
-      returned. This is also the entry point for printing: the same PDF
-      shown here is the one that gets printed, so there's no separate
-      window, no second fetch, and no rebuilding of the invoice. */
   async function openInvoiceForPrinting(orderId) {
     receiptOrderId = orderId;
 
@@ -823,13 +679,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /* Kept as an alias so anything else still referencing the old name
-     keeps working - openInvoiceForPrinting() is the real entry point. */
   const showReceipt = openInvoiceForPrinting;
 
-  /** Marks orderId Delivered on the backend and reflects that locally.
-      Called ONLY after a print operation has actually completed - never
-      just because the PDF was fetched, previewed, or Print was clicked. */
   async function markOrderDelivered(orderId) {
     try {
       const response = await API.editOrder(orderId, { Status: 'Delivered', Bill_Printed: true });
@@ -838,27 +689,11 @@ document.addEventListener('DOMContentLoaded', () => {
       render();
       Toast.success('Invoice printed. Order moved to Delivered.');
     } catch (err) {
-      /* toast already shown by API; the print itself already succeeded,
-         so nothing to undo - the order simply stays in its current
-         Status/Bill_Printed state and the user can print again to
-         retry the status update. */
     }
   }
 
-  /** Prints the invoice already loaded in the receipt modal's preview
-      iframe and, once the browser reports that print operation as
-      finished, moves the order to Delivered.
-
-      This prints the SAME iframe the user is already looking at inside
-      the receipt modal - not a new browser window, not an about:blank
-      popup, and not a hidden/off-DOM iframe built just-in-time for
-      printing (that approach was tried before and produced a blank
-      printed page in Chrome, because a hidden iframe's PDF viewer has no
-      chance to finish initializing before print() runs). Because this
-      iframe is already visible and fully rendered by the time the user
-      clicks Print, its content is ready to print reliably. */
   async function handlePrintClick() {
-    if (isPrinting) return; // duplicate/rapid clicks while printing: ignored
+    if (isPrinting) return;
     if (!receiptOrderId) return;
 
     const frameEl = document.getElementById('receipt-pdf-frame');
@@ -872,32 +707,26 @@ document.addEventListener('DOMContentLoaded', () => {
     setPrintButtonBusy(true);
 
     const targetWindow = frameEl.contentWindow;
+    let printFinished = false;
 
-    /* 'afterprint' is the strongest completion signal a normal browser
-       exposes for print(). It fires once the native print dialog has
-       been dismissed - Print or Cancel alike - with no way to confirm
-       the thermal printer produced paper. We treat it as "the print
-       operation has completed" in the browser's own sense of that
-       phrase, and only then touch order Status/Bill_Printed. */
-    function onAfterPrint() {
+    const cleanupPrintListeners = () => {
       targetWindow.removeEventListener('afterprint', onAfterPrint);
+      window.removeEventListener('afterprint', onAfterPrint);
+    };
+
+    function onAfterPrint() {
+      if (printFinished) return;
+      printFinished = true;
+
+      cleanupPrintListeners();
       setPrintButtonBusy(false);
 
       const order = orders.find((o) => o.id === orderId);
-      /* Use the full isDelivered() rule here too, not just Status. An
-         order with Status 'Delivered' but Bill_Printed still false (e.g.
-         set manually via Edit Order) is NOT "already delivered" - this
-         print is the one that completes the workflow, so it must still
-         call markOrderDelivered() below. Only skip the update for an
-         order that was genuinely already Status='Delivered' AND
-         Bill_Printed=true before this print (a true reprint). */
       const alreadyDelivered = order && isDelivered(order);
 
       closeModal('receipt-modal');
 
       if (alreadyDelivered) {
-        /* Reprinting an already-Delivered order: nothing to change on
-           the backend, so skip the redundant editOrder call. */
         return;
       }
 
@@ -906,15 +735,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       targetWindow.addEventListener('afterprint', onAfterPrint);
+      window.addEventListener('afterprint', onAfterPrint);
+
       targetWindow.focus();
       targetWindow.print();
     } catch (err) {
       console.error('Failed to open the browser print dialog:', err);
-      targetWindow.removeEventListener('afterprint', onAfterPrint);
+
+      cleanupPrintListeners();
       setPrintButtonBusy(false);
+
       Toast.error('Could not open the print dialog. Please try again.');
-      /* Print never actually started: order stays Live, Status and
-         Bill_Printed are untouched, user can retry. */
     }
   }
 
@@ -922,7 +753,6 @@ document.addEventListener('DOMContentLoaded', () => {
     printReceiptBtn.addEventListener('click', handlePrintClick);
   }
 
-  /* ---------------- Event delegation for order actions ---------------- */
   document.addEventListener('click', (e) => {
     const viewBtn = e.target.closest('.view-order-btn');
     const editBtn = e.target.closest('.edit-order-btn');
@@ -941,9 +771,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /* Menu items are needed for item-name lookups (Order Details, receipts)
-     and for the New Order / Add Item pickers, so load them alongside the
-     order list itself. */
   loadMenu();
   loadOrders();
 });
