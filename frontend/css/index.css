@@ -125,6 +125,7 @@ body {
 
 .size-filter-btn {
   padding: 10px 18px;
+  margin-top: 5px;
   border-radius: var(--radius-pill);
   background: var(--color-bg-alt);
   color: var(--color-text-muted);
