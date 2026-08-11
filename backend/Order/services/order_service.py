@@ -137,26 +137,23 @@ class OrderService:
         )
     
         if items is not None:
-            Order_Items.objects.filter(
-            order=order
-        ).delete()
-    
-            for item in items:
-        
-                menu = item["item"]
-        
-                qty = item["order_qty"]
-        
-                Order_Items.objects.create(
-                    order=order,
-                    item=menu,
-                    unit_price=menu.Item_Price,
-                    order_qty=qty
-                )
-        if items is not None:
-            order.Total = OrderService.order_total(order.id)
-            order.save()
-    
+         Order_Items.objects.filter(
+             order=order
+         ).delete()
+     
+         for item in items:
+             menu = item["item"]
+             qty = item["order_qty"]
+     
+             Order_Items.objects.create(
+                 order=order,
+                 item=menu,
+                 unit_price=menu.Item_Price,
+                 order_qty=qty
+             )
+     
+         order.Total = OrderService.order_total(order.id)
+         order.save()
         return order
 
     @staticmethod
