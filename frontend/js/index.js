@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let cart = {}; // { menuItemId: { item, qty } }
   let activeCategory = 'All';
   let searchTerm = '';
+  let activeSize = 'Full';
   let selectedPayment = 'Offline';
 
   const menuGrid = document.getElementById('menu-grid');
@@ -305,4 +306,42 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   loadMenu();
+});
+
+/* ----------menu items seperator-------------*/
+function getFilteredMenu() {
+    return menuItems.filter((item) => {
+        const matchesCategory =
+            activeCategory === 'All' ||
+            item.Item_Category === activeCategory;
+
+        const matchesSize =
+            String(item.Item_Size).toLowerCase() ===
+            activeSize.toLowerCase();
+
+        const matchesSearch =
+            item.Item_Name.toLowerCase().includes(
+                searchTerm.toLowerCase()
+            );
+
+        return matchesCategory && matchesSize && matchesSearch;
+    });
+}
+
+const sizeFilter = document.getElementById('new-order-size-filter');
+
+sizeFilter.addEventListener('click', (e) => {
+    const button = e.target.closest('.size-filter-btn');
+
+    if (!button) return;
+
+    sizeFilter
+        .querySelectorAll('.size-filter-btn')
+        .forEach(btn => btn.classList.remove('active'));
+
+    button.classList.add('active');
+
+    activeSize = button.dataset.size;
+
+    renderMenu();
 });
