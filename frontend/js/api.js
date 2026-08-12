@@ -7,7 +7,7 @@
    ============================================================ */
 
 /* Change this once to point the whole app at a different backend. */
-const BASE_URL = window.POS_BASE_URL || 'http://140.238.243.196/';
+const BASE_URL = window.POS_BASE_URL || 'http://140.238.243.196';
 
 /* ------------------------------------------------------------
    Toast notifications
