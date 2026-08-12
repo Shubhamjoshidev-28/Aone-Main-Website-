@@ -9,7 +9,7 @@ from Order.views.order_views import (
     OrderDetailsView
 )
 from Order.views.invoice_views import (
-    generate_invoice_view
+    generate_invoice_html_view
 )
 
 urlpatterns = [
@@ -18,5 +18,5 @@ urlpatterns = [
     path('delete_order/<int:order>/',DeleteOrderView.as_view(),name='delete_order'),
     path('get_order/',OrderListView.as_view(),name='get_order'),
     path('order_details/<int:order>/',OrderDetailsView.as_view(),name='order_details'),
-    path('print_invoice/<int:order>/',generate_invoice_view,name='print_invoice')
+    path('print_invoice/<int:order>/',generate_invoice_html_view,name='print_invoice')
 ]
