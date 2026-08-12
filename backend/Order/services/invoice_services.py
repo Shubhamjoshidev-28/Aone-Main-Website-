@@ -56,7 +56,7 @@ class InvoiceService:
         
             "order": {
                 "status": order.Status,
-                "staff": order.Staff_Assigned.Staff_Name if order.Staff_Assigned else None,
+                "staff": order.Staff_Assigned.Name if order.Staff_Assigned else None,
                 "payment_status": order.Payment_Status,
                 "payment_type": order.Payment_Type,
                 "source": order.Source,
