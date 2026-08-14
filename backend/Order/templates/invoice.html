@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="en">
 
 <head>
@@ -15,17 +16,6 @@
     </title>
 
     <style>
-
-        /* ==========================================================
-           CONFIG
-           This is the ONLY block that changes between printer sizes.
-           For an 80mm printer: change --paper-width to 80mm AND
-           change the @page size rule below to 80mm auto.
-           (Chromium's @page rule does not reliably resolve custom
-           properties across all versions, so it is kept literal
-           for print-reliability. Everything else in this file reads
-           from --paper-width and adapts automatically.)
-           ========================================================== */
 
         :root {
             --paper-width: 58mm;
@@ -56,13 +46,6 @@
             font-family: "Courier New", Courier, monospace;
             color: #000;
         }
-
-        /* ==========================================================
-           RECEIPT CONTAINER
-           No min-height here on purpose: forcing a minimum height
-           is what created the "large blank white area" bug. Roll
-           paper should be exactly as tall as its content.
-           ========================================================== */
 
         .receipt {
             width: var(--paper-width);
@@ -121,17 +104,6 @@
             margin-bottom: 2px;
         }
 
-        /* ==========================================================
-           LABEL / VALUE ROWS
-           Rebuilt as a real table instead of flexbox.
-           This is the fix for clipped text ("Rahul" -> "Rahu",
-           "Offline" cut, invoice number clipped). Flex children
-           don't wrap text by default inside a fixed-width parent;
-           Chromium's print engine hard-clips the overflow instead
-           of reflowing it. A table cell wraps correctly and can
-           never silently lose characters.
-           ========================================================== */
-
         .info-table {
             width: 100%;
             border-collapse: collapse;
@@ -155,14 +127,6 @@
             overflow-wrap: break-word;
             word-break: break-word;
         }
-
-        /* ==========================================================
-           ITEMS TABLE
-           table-layout: fixed + explicit column widths that always
-           sum to 100% of --printable-width. This is what lets it
-           hold 1 item or 100 items, and long / multi-line item
-           names, without ever collapsing a column.
-           ========================================================== */
 
         .items-table {
             width: 100%;
@@ -244,32 +208,6 @@
             word-break: break-word;
         }
 
-        .print-button {
-            display: block;
-
-            width: var(--paper-width);
-
-            margin: 20px auto;
-
-            padding: 12px;
-
-            border: none;
-
-            background: #111;
-            color: white;
-
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-
-        /* ==========================================================
-           PRINT MEDIA
-           Paper width is read from --paper-width so screen and
-           print are guaranteed to agree. This alone removes the
-           two-page / blank-page bug, which was caused by the old
-           print block hardcoding 80mm while the printer is 58mm.
-           ========================================================== */
 
         @media print {
 
@@ -302,6 +240,23 @@
                 break-after: avoid;
             }
         }
+
+        /* qr code */
+        .qr_code {
+                display: block;
+                width: 42mm;
+                height: 42mm;
+                margin: 8px auto;
+                object-fit: contain;
+                image-rendering: pixelated;
+            } 
+        
+        .qr_code_text{
+            text-align: center;
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+        
 
     </style>
 
@@ -514,6 +469,16 @@
 
 
     <div class="divider"></div>
+
+    <!--- QR Code --->
+
+    <div class="qr_code_text">Scan & Pay</div>
+    {% if qr_code_url %}
+        <img src="{{ qr_code_url }}" alt="QR code" class="qr_code">
+    {% else %}
+        <img src="{% static 'images/qr_code.png' %}" alt="QR code" class="qr_code">
+    {% endif %}
+    <div class="qr_code_text">UPI ID: Q486145326@ybl</div>
 
 
     <!-- FOOTER -->

@@ -8,7 +8,8 @@ from Accounts.models.accounts import (
 
 from Accounts.selector.accounts_selector import (
     get_staff,
-    get_staff_by_id
+    get_staff_by_id,
+    get_active_staff
 )
 
 
@@ -79,7 +80,7 @@ class StaffService:
     @staticmethod
     def staff_list():
 
-        return get_staff()
+        return get_active_staff()
 
 
     @staticmethod

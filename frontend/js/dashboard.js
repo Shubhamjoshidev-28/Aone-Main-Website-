@@ -181,6 +181,10 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="order-meta-label">Source</div>
             <div>${order.Source || '-'}</div>
           </div>
+          <div class="order-meta-item">
+            <div class="order-meta-label">Staff Assigned</div>
+            <div>${getStaffAssignedName(order.Staff_Assigned)}</div>
+          </div>
         </div>
         <div class="order-card-badges">
           <span class="badge ${statusBadgeClass(order.Status)}">${order.Status}</span>

@@ -29,20 +29,7 @@ class Menu(
     ("Pasta", "Pasta"),
     ("Beverages", "Beverages"),
     ("Salad", "Salad"),
-)
-    ITEM_CATEGORY_CHOICES = (
-    ("Special Items", "Special Items"),
-    ("Tandoori Items", "Tandoori Items"),
-    ("Non Veg Snacks", "Non Veg Snacks"),
-    ("Non Veg Main Course", "Non Veg Main Course"),
-    ("Kebab", "Kebab"),
-    ("Fish Special", "Fish Special"),
-    ("Veg Snacks", "Veg Snacks"),
-    ("Veg Main Course", "Veg Main Course"),
-    ("Roti / Prantha", "Roti / Prantha"),
-    ("Pasta", "Pasta"),
-    ("Beverages", "Beverages"),
-    ("Salad", "Salad"),
+    ("Extra","Extra")
 )
 
     id = models.BigAutoField(
