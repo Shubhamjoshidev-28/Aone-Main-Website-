@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <td class="menu-item-name-cell">${item.Item_Name}</td>
         <td>${item.Item_Category}</td>
         <td>${item.Item_Size}</td>
-        <td>₹${Number(item.Item_Price).toFixed(2)}</td>
+        <td>Rs.${Number(item.Item_Price).toFixed(2)}</td>
         <td><span class="badge ${item.is_available ? 'badge-success' : 'badge-danger'}">${item.is_available ? 'Available' : 'Unavailable'}</span></td>
         <td>
           <div class="table-actions">

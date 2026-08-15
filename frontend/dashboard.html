@@ -94,7 +94,8 @@
                   <th>Customer</th>
                   <th>Date</th>
                   <th>Total</th>
-                  <th>Print</th>
+                  <th>Actions</th>
+
                 </tr>
               </thead>
               <tbody id="delivered-orders-body"></tbody>
@@ -232,13 +233,13 @@
           <div class="cart-totals" style="margin:0; padding:0; border-top:none;">
             <div class="cart-total-row">
               <span>Subtotal</span>
-              <span id="new-order-subtotal">₹0.00</span>
+              <span id="new-order-subtotal">Rs. 0.00</span>
             </div>
             <!-- TODO: Neither the Order nor Menu backend models expose a GST /
                  tax field yet. Add a GST row here once the API returns one. -->
             <div class="cart-total-row cart-total-grand">
               <span>Grand Total</span>
-              <span id="new-order-grand-total">₹0.00</span>
+              <span id="new-order-grand-total"Rs. 0.00</span>
             </div>
           </div>
         </div>
@@ -372,13 +373,13 @@
           <div class="cart-totals" style="margin-top:16px;">
             <div class="cart-total-row">
               <span>Subtotal</span>
-              <span id="edit-order-subtotal">₹0.00</span>
+              <span id="edit-order-subtotal">Rs.0.00</span>
             </div>
             <!-- TODO: Neither the Order nor Menu backend models expose a GST /
                  tax field yet. Add a GST row here once the API returns one. -->
             <div class="cart-total-row cart-total-grand">
               <span>Grand Total</span>
-              <span id="edit-order-grand-total">₹0.00</span>
+              <span id="edit-order-grand-total">Rs.0.00</span>
             </div>
           </div>
         </div>
@@ -427,8 +428,8 @@
     </div>
   </div>
 
-  <script src="js/api.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/dashboard.js"></script>
+  <script src="js/api.js?v=20260815-2"></script>
+  <script src="js/auth.js?v=20260815-2"></script>
+  <script src="js/dashboard.js?v=20260815-2"></script>
 </body>
 </html>

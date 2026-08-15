@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="menu-size-tag">${sizeLabel}</span>
           </div>
           <h3 class="menu-card-name">${item.Item_Name}</h3>
-          <span class="menu-card-price">₹${Number(item.Item_Price).toFixed(2)}</span>
+          <span class="menu-card-price">Rs.${Number(item.Item_Price).toFixed(2)}</span>
         </div>
         <div class="menu-card-footer">
           <div class="qty-stepper">
@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="cart-item-icon"><i class="fa-solid fa-utensils"></i></div>
         <div class="cart-item-info">
           <div class="cart-item-name">${item.Item_Name} (${item.Item_Size})</div>
-          <div class="cart-item-price">₹${Number(item.Item_Price).toFixed(2)} x ${qty} = ₹${(Number(item.Item_Price) * qty).toFixed(2)}</div>
+          <div class="cart-item-price">Rs.${Number(item.Item_Price).toFixed(2)} x ${qty} = Rs.${(Number(item.Item_Price) * qty).toFixed(2)}</div>
         </div>
         <div class="qty-stepper">
           <button type="button" class="qty-minus" data-id="${item.id}"><i class="fa-solid fa-minus"></i></button>
@@ -204,10 +204,10 @@ document.addEventListener('DOMContentLoaded', () => {
       cartItemsEl.appendChild(row);
     });
 
-    cartSubtotalEl.textContent = `₹${total.toFixed(2)}`;
-    cartGrandTotalEl.textContent = `₹${total.toFixed(2)}`;
+    cartSubtotalEl.textContent = `Rs.${total.toFixed(2)}`;
+    cartGrandTotalEl.textContent = `Rs.${total.toFixed(2)}`;
 
-    floatingCartTotal.textContent = `₹${total.toFixed(2)}`;
+    floatingCartTotal.textContent = `Rs.${total.toFixed(2)}`;
     floatingCartBtn.classList.toggle('visible', count > 0);
 
     renderMenu();

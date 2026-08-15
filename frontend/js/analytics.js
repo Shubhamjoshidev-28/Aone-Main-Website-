@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ]);
 
       const dashboard = analyticsRes.dashboard || {};
-      document.getElementById('stat-revenue').textContent = `₹${Number(dashboard.today_revenue || 0).toFixed(2)}`;
+      document.getElementById('stat-revenue').textContent = `Rs.${Number(dashboard.today_revenue || 0).toFixed(2)}`;
       document.getElementById('stat-orders').textContent = dashboard.today_orders || 0;
       document.getElementById('stat-best-seller').textContent =
         dashboard.best_seller && dashboard.best_seller.item_name ? dashboard.best_seller.item_name : 'No sales yet';
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
       data: {
         labels,
         datasets: [{
-          label: 'Revenue (₹)',
+          label: 'Revenue (Rs.)',
           data: revenueByDay,
           borderColor: '#C1121F',
           backgroundColor: 'rgba(193, 18, 31, 0.1)',

@@ -7,7 +7,7 @@
    ============================================================ */
 
 /* Change this once to point the whole app at a different backend. */
-const BASE_URL = window.POS_BASE_URL || 'https://140.238.243.196';
+const BASE_URL = window.POS_BASE_URL || 'http://127.0.0.1:8000';
 
 /* ------------------------------------------------------------
    Toast notifications
@@ -214,8 +214,12 @@ const API = (() => {
     createOrder: (payload) =>
       request('/order/create_order/', { method: 'POST', body: payload, auth: false }),
 
-    editOrder: (orderId, payload) =>
-      request(`/order/edit_order/${orderId}/`, { method: 'PATCH', body: payload }),
+    editOrder: (orderId, payload, options = {}) =>
+      request(`/order/edit_order/${orderId}/`, {
+          method: 'PATCH',
+          body: payload,
+          silent: options.silent || false
+      }),
 
     deleteOrder: (orderId) =>
       request(`/order/delete_order/${orderId}/`, { method: 'DELETE' }),

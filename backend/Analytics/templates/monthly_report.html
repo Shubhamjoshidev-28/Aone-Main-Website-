@@ -384,7 +384,7 @@
         {% endif %}
       </div>
       <div class="header-titles">
-        <p class="restaurant-name font-display">{{ restaurant.name|default:"Restaurant Name" }}</p>
+        <p class="restaurant-name font-display">A-One Barbeque</p>
         <p class="report-subtitle">Monthly Business Report</p>
         <span class="report-month"><i class="fa-regular fa-calendar"></i>&nbsp; {{ report.month_name|default:"—" }}</span>
       </div>
@@ -399,7 +399,7 @@
   <section class="summary-grid">
     <div class="summary-card card-revenue">
       <div class="summary-icon"><i class="fa-solid fa-sack-dollar"></i></div>
-      <p class="summary-number">₹{{ summary.total_revenue|floatformat:2|intcomma }}</p>
+      <p class="summary-number">Rs.{{ summary.total_revenue|floatformat:2|intcomma }}</p>
       <p class="summary-title">Total Revenue</p>
     </div>
 
@@ -411,7 +411,7 @@
 
     <div class="summary-card card-aov">
       <div class="summary-icon"><i class="fa-solid fa-chart-line"></i></div>
-      <p class="summary-number">₹{{ summary.average_order_value|floatformat:2|intcomma }}</p>
+      <p class="summary-number">Rs.{{ summary.average_order_value|floatformat:2|intcomma }}</p>
       <p class="summary-title">Average Order Value</p>
     </div>
 
@@ -520,7 +520,7 @@
             <tr>
               <td class="cell-strong">{{ row.date }}</td>
               <td>{{ row.orders }}</td>
-              <td class="cell-money">₹{{ row.revenue|floatformat:2|intcomma }}</td>
+              <td class="cell-money">Rs.{{ row.revenue|floatformat:2|intcomma }}</td>
             </tr>
             {% empty %}
             <tr><td colspan="3" class="text-center text-muted">No data available for this month.</td></tr>
@@ -551,7 +551,7 @@
               <td><span class="rank-badge">{{ forloop.counter }}</span></td>
               <td class="cell-strong">{{ row.item_name }}</td>
               <td>{{ row.units_sold }}</td>
-              <td class="cell-money">₹{{ row.revenue|floatformat:2|intcomma }}</td>
+              <td class="cell-money">Rs.{{ row.revenue|floatformat:2|intcomma }}</td>
             </tr>
             {% empty %}
             <tr><td colspan="4" class="text-center text-muted">No data available for this month.</td></tr>
@@ -657,7 +657,7 @@
               backgroundColor: "#23201f",
               padding: 10,
               cornerRadius: 8,
-              callbacks: { label: (ctx) => " ₹" + ctx.parsed.y.toLocaleString("en-IN") }
+              callbacks: { label: (ctx) => " Rs." + ctx.parsed.y.toLocaleString("en-IN") }
             }
           },
           scales: {
@@ -665,7 +665,7 @@
             y: {
               beginAtZero: true,
               grid: { color: "#f0e9e9" },
-              ticks: { font: { family: "Inter" }, callback: (v) => "₹" + v.toLocaleString("en-IN") }
+              ticks: { font: { family: "Inter" }, callback: (v) => "Rs." + v.toLocaleString("en-IN") }
             }
           }
         }
@@ -760,7 +760,7 @@
                 label: function (ctx) {
                   const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
                   const pct = total ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
-                  return " " + ctx.label + ": ₹" + ctx.parsed.toLocaleString("en-IN") + " (" + pct + "%)";
+                  return " " + ctx.label + ": Rs." + ctx.parsed.toLocaleString("en-IN") + " (" + pct + "%)";
                 }
               }
             },

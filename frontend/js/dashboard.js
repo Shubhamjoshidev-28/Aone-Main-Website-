@@ -2,6 +2,16 @@ document.addEventListener('DOMContentLoaded', () => {
   Auth.requireAuth();
   Shell.init();
 
+  /* Guard: the receipt/invoice modal must never be destroyed by a grid
+     re-render (renderLive/renderDelivered wipe their containers via
+     innerHTML). Moving it to be a direct child of <body> guarantees it
+     sits outside any container that gets rebuilt, so the print preview
+     can never be closed as a side effect of the background DB update. */
+  const receiptModalGuardEl = document.getElementById('receipt-modal');
+  if (receiptModalGuardEl && receiptModalGuardEl.parentElement !== document.body) {
+    document.body.appendChild(receiptModalGuardEl);
+  }
+
   let orders = [];
   let activeTab = 'live';
   let pendingDeleteId = null;
@@ -30,7 +40,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const deliveredSection = document.getElementById('delivered-orders-section');
 
   function isDelivered(order) {
-    return order.Status === 'Delivered' && order.Bill_Printed === true;
+    const status = String(order.Status || '').trim().toLowerCase();
+    const billPrinted = order.Bill_Printed === true || order.Bill_Printed === 'true' || order.Bill_Printed === 1;
+    return status === 'delivered' || billPrinted;
   }
 
   function isLive(order) {
@@ -58,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function formatMoney(value) {
-    return `₹${Number(value || 0).toFixed(2)}`;
+    return `Rs.${Number(value || 0).toFixed(2)}`;
   }
 
   async function loadMenu() {
@@ -215,7 +227,10 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${order.Cust_Name || '-'}</td>
         <td>${formatTime(order.created_at)}</td>
         <td>${formatMoney(order.Total)}</td>
-        <td><button class="btn btn-icon btn-sm print-order-btn" data-id="${order.id}" title="Print"><i class="fa-solid fa-print"></i></button></td>
+        <td>
+          <button class="btn btn-icon btn-sm edit-order-btn" data-id="${order.id}" title="Edit"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn btn-icon btn-sm print-order-btn" data-id="${order.id}" title="Print"><i class="fa-solid fa-print"></i></button>
+        </td>
       `;
       deliveredBody.appendChild(row);
     });
@@ -233,22 +248,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('refresh-orders-btn').addEventListener('click', loadOrders);
 
+  /* Targeted UI sync used ONLY by markOrderDelivered(). It recomputes the
+     Live/Delivered lists from the in-memory `orders` array and repaints
+     the two grids + their counts — nothing else. It never touches
+     receipt-modal / receipt-pdf-frame, never opens/closes any modal, and
+     never shows the global loader. This is deliberately kept separate
+     from render() so the background delivery update can never be the
+     thing that closes/reloads the invoice workflow that's active at the
+     same time. */
+  function updateOrderDeliveredUI(orderId) {
+    const live = orders.filter(isLive).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const delivered = orders.filter((o) => !isLive(o)).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    liveCountEl.textContent = live.length;
+    deliveredCountEl.textContent = delivered.length;
+
+    renderLive(live);
+    renderDelivered(delivered);
+  }
+
   let menuSelectorParentModalId = null;
 
   function openModal(id) {
     document.getElementById(id).classList.add('show');
   }
   function closeModal(id) {
-    document.getElementById(id).classList.remove('show');
-    if (id === 'menu-selector-modal' && menuSelectorParentModalId) {
-      const parentId = menuSelectorParentModalId;
-      menuSelectorParentModalId = null;
-      openModal(parentId);
+    const modal = document.getElementById(id);
+
+    if (!modal) return;
+
+    // Never allow background DB/UI work to close the print preview.
+    if (id === 'receipt-modal' && receiptPreviewLocked) {
+        console.log('[PRINT] Receipt preview is locked.');
+        return;
     }
+
+    modal.classList.remove('show');
+
+    if (id === 'menu-selector-modal' && menuSelectorParentModalId) {
+        const parentId = menuSelectorParentModalId;
+        menuSelectorParentModalId = null;
+        openModal(parentId);
+    }
+
     if (id === 'receipt-modal') {
-      revokeReceiptPreview();
+        revokeReceiptPreview();
     }
   }
+
   document.querySelectorAll('[data-close-modal]').forEach((btn) => {
     btn.addEventListener('click', () => closeModal(btn.dataset.closeModal));
   });
@@ -267,6 +314,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const match = staffList.find((s) => s.id === staffAssigned || s.id === Number(staffAssigned));
     return match ? (match.Name || match.username || '-') : '-';
+  }
+
+  /* Normalizes Staff_Assigned (which the backend may return as an
+     expanded object, a plain ID, or null) down to a plain ID or null,
+     suitable for sending back in an update payload. */
+  function resolveStaffId(staffAssigned) {
+    if (staffAssigned === null || staffAssigned === undefined || staffAssigned === '') {
+      return null;
+    }
+    if (typeof staffAssigned === 'object') {
+      return staffAssigned.id != null ? staffAssigned.id : null;
+    }
+    return Number(staffAssigned);
   }
 
   async function viewOrder(orderId) {
@@ -716,6 +776,15 @@ document.addEventListener('DOMContentLoaded', () => {
   let receiptOrderId = null;
   let receiptPreviewUrl = null;
   let isPrinting = false;
+  let receiptPreviewLocked = false;
+
+  /* Guards against a double-clicked order Print icon firing two
+     concurrent PATCH requests for the same order (see CASE 9). Only
+     covers the in-flight window of markOrderDelivered() — the local
+     order object isn't updated to Status=Delivered until the response
+     comes back, so isDelivered(order) alone can't catch a rapid
+     double-click. */
+  const deliveryUpdateInFlight = new Set();
 
   const printReceiptBtn = document.getElementById('print-receipt-btn');
   const printReceiptBtnDefaultLabel = printReceiptBtn ? printReceiptBtn.innerHTML : '';
@@ -737,6 +806,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function openInvoiceForPrinting(orderId) {
+    console.log('[PRINT] Opening invoice:', orderId);
     receiptOrderId = orderId;
 
     const statusEl = document.getElementById('receipt-loading');
@@ -754,86 +824,167 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       const pdfBlob = await API.fetchInvoicePDF(orderId);
+
+      /* If the modal was closed (or reopened for a different order)
+         while this request was in flight, don't resurrect it. */
+      if (receiptOrderId !== orderId) return;
+
       receiptPreviewUrl = URL.createObjectURL(pdfBlob);
       frameEl.src = receiptPreviewUrl;
       frameEl.classList.remove('hidden');
       statusEl.classList.add('hidden');
       if (printReceiptBtn) printReceiptBtn.disabled = false;
+      console.log('[PRINT] Invoice loaded:', orderId);
     } catch (err) {
-      console.error('Failed to load invoice PDF:', err);
+      console.error('[PRINT] Invoice loading failed:', err);
+      if (receiptOrderId !== orderId) return;
       statusEl.textContent = 'Could not load the invoice. Please try again.';
       statusEl.classList.add('receipt-pdf-error');
       if (printReceiptBtn) printReceiptBtn.disabled = true;
     }
   }
 
-  const showReceipt = openInvoiceForPrinting;
+  /* Marks an order Delivered + Bill_Printed on the backend, then updates
+     it in the local orders array and re-renders — moving it from the
+     Live tab to the Delivered tab. Called only from handlePrintClick(),
+     after the print operation has been initiated. It never touches the
+     receipt modal DOM and makes exactly one API call (no extra
+     full-list refetch), so it can run without disturbing the preview
+     that's still open on screen.
 
-  async function markOrderDelivered(orderId) {
+     Sends the full order payload (same shape the Edit Order form uses)
+     rather than a sparse {Status, Bill_Printed} patch, since a partial
+     payload can silently fail if the backend expects a complete update. */
+  async function markOrderDelivered(order) {
+    if (!order || !order.id) return;
+    if (deliveryUpdateInFlight.has(order.id)) return;
+
+    deliveryUpdateInFlight.add(order.id);
+
+    console.log('[PRINT] Starting background delivery update:', order.id);
+
+    const payload = {
+        Cust_Name: order.Cust_Name || '',
+        Table_No: order.Table_No != null ? Number(order.Table_No) : null,
+        Car_No: order.Car_No || '',
+        Phone: order.Phone || null,
+        Staff_Assigned: resolveStaffId(order.Staff_Assigned),
+        Payment_Type: order.Payment_Type || 'Offline',
+        Status: 'Delivered',
+        Payment_Status: order.Payment_Status || 'Pending',
+        Bill_Printed: true,
+        items: (order.order_items || []).map((it) => ({
+            item: it.item,
+            unit_price: it.unit_price,
+            order_qty: it.order_qty
+        }))
+    };
+
     try {
-      const response = await API.editOrder(orderId, { Status: 'Delivered', Bill_Printed: true });
-      const updated = response.order;
-      orders = orders.map((o) => (o.id === orderId ? updated : o));
-      render();
-      Toast.success('Invoice printed. Order moved to Delivered.');
-    } catch (err) {
+        // IMPORTANT:
+        // This is a background DB operation.
+        // It must not control the receipt preview.
+        const response = await API.editOrder(order.id, payload, {
+            silent: true
+        });
+
+        const updatedOrder =
+            response && response.order
+                ? response.order
+                : { ...order, ...payload };
+
+        const idx = orders.findIndex((o) => o.id === order.id);
+
+        if (idx !== -1) {
+            orders[idx] = updatedOrder;
+        }
+
+        console.log('[PRINT] Background delivery update successful:', order.id);
+
+        // Only update the order lists.
+        // Do NOT call loadOrders().
+        // Do NOT touch receipt-modal.
+        updateOrderDeliveredUI(order.id);
+
+    } catch (error) {
+        console.error('[PRINT] Background delivery update failed:', error);
+        Toast.error('Failed to update delivered order.');
+
+    } finally {
+        deliveryUpdateInFlight.delete(order.id);
+
+        // DB operation has finished.
+        // Preview remains untouched.
+        console.log('[PRINT] Background delivery update finished:', order.id);
     }
   }
 
+  /* Single entry point for the "print" action on an order card. Its only
+     responsibility is opening the invoice preview — it must NEVER update
+     the backend or touch the order's delivery status. The delivery
+     update happens later, and only from handlePrintClick(), once the
+     user has actually initiated printing from inside the preview. */
+  function openPrintPreview(orderId) {
+    console.log('[PRINT] Opening print preview:', orderId);
+
+    const order = orders.find((o) => o.id === orderId);
+
+    if (!order) {
+        console.error(`[PRINT] Order #${orderId} not found.`);
+        return;
+    }
+
+    receiptPreviewLocked = false;
+    receiptOrderId = orderId;
+
+    openInvoiceForPrinting(orderId);
+  }
+
+  /* Handles the Print button INSIDE the preview. This is the only place
+     that is allowed to start the delivery update: printing is initiated
+     first, and only once that's underway do we persist Status=Delivered.
+     receiptPreviewLocked is held for the duration of the backend call so
+     the preview can't be dismissed mid-update (see closeModal), but the
+     modal itself lives outside the order grids (see the DOMContentLoaded
+     guard above) so a grid re-render can never destroy it either way. */
   async function handlePrintClick() {
     if (isPrinting) return;
     if (!receiptOrderId) return;
 
     const frameEl = document.getElementById('receipt-pdf-frame');
-    const orderId = receiptOrderId;
 
     if (!receiptPreviewUrl || !frameEl.contentWindow) {
-      Toast.error('Invoice is still loading. Please wait a moment and try again.');
-      return;
+        Toast.error('Invoice is still loading. Please wait a moment and try again.');
+        return;
     }
+
+    const order = orders.find((o) => o.id === receiptOrderId);
 
     setPrintButtonBusy(true);
-
-    const targetWindow = frameEl.contentWindow;
-    let printFinished = false;
-
-    const cleanupPrintListeners = () => {
-      targetWindow.removeEventListener('afterprint', onAfterPrint);
-      window.removeEventListener('afterprint', onAfterPrint);
-    };
-
-    function onAfterPrint() {
-      if (printFinished) return;
-      printFinished = true;
-
-      cleanupPrintListeners();
-      setPrintButtonBusy(false);
-
-      const order = orders.find((o) => o.id === orderId);
-      const alreadyDelivered = order && isDelivered(order);
-
-      closeModal('receipt-modal');
-
-      if (alreadyDelivered) {
-        return;
-      }
-
-      markOrderDelivered(orderId);
-    }
+    receiptPreviewLocked = true;
 
     try {
-      targetWindow.addEventListener('afterprint', onAfterPrint);
-      window.addEventListener('afterprint', onAfterPrint);
+        const targetWindow = frameEl.contentWindow;
 
-      targetWindow.focus();
-      targetWindow.print();
+        console.log('[PRINT] Opening browser print dialog:', receiptOrderId);
+        targetWindow.focus();
+        targetWindow.print();
+
+        // Only now — after the print operation has been initiated — do
+        // we persist the order as delivered. Already-delivered reprints
+        // (e.g. from the Delivered tab) skip this entirely.
+        if (order && !isDelivered(order)) {
+            await markOrderDelivered(order);
+        }
+
     } catch (err) {
-      console.error('Failed to open the browser print dialog:', err);
+        console.error('Failed to open the browser print dialog:', err);
 
-      cleanupPrintListeners();
-      setPrintButtonBusy(false);
+        Toast.error('Could not open the print dialog. Please try again.');
 
-      Toast.error('Could not open the print dialog. Please try again.');
+    } finally {
+        setPrintButtonBusy(false);
+        receiptPreviewLocked = false;
     }
   }
 
@@ -841,7 +992,7 @@ document.addEventListener('DOMContentLoaded', () => {
     printReceiptBtn.addEventListener('click', handlePrintClick);
   }
 
-  document.addEventListener('click', (e) => {
+  document.addEventListener('click', async (e) => {
     const viewBtn = e.target.closest('.view-order-btn');
     const editBtn = e.target.closest('.edit-order-btn');
     const deleteBtn = e.target.closest('.delete-order-btn');
@@ -852,10 +1003,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (deleteBtn) confirmDelete(Number(deleteBtn.dataset.id));
     if (printBtn) {
       const orderId = Number(printBtn.dataset.id);
-
-      if (orderId) {
-        openInvoiceForPrinting(orderId);
-      }
+      if (orderId) openPrintPreview(orderId);
     }
   });
 
